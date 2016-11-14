@@ -18,6 +18,7 @@ import java.util.List;
 
 public class DefaultDriver extends AbstractDriver {
 
+    // test
     private NeuralNetwork neuralNetwork;
 
     // arrows pressed and released
