@@ -44,24 +44,32 @@ public class DefaultDriver extends AbstractDriver {
     List<String> lines = null;
     private int count;
 
+    // change this value to choose whether to simulate or control the car
+    private boolean simulate = false;
+
     public DefaultDriver() {
         initialize();
         neuralNetwork = new NeuralNetwork(12, 8, 2);
         //neuralNetwork = neuralNetwork.loadGenome();
-        focusFrame = new FocusFrame();
-        focusFrame.requestFocus();
+        if(!simulate) {
+            focusFrame = new FocusFrame();
+            focusFrame.requestFocus();
+        }
 
         try {
-            pw = new PrintWriter(new File("test.csv"));
-            pw.println("ACCELERATION,BRAKE,STEERING,SPEED,TRACK_POSITION,ANGLE_TO_TRACK_AXIS,TRACK_EDGE_0,TRACK_EDGE_1,TRACK_EDGE_2," +
-                    "TRACK_EDGE_3,TRACK_EDGE_4,TRACK_EDGE_5,TRACK_EDGE_6,TRACK_EDGE_7,TRACK_EDGE_8,TRACK_EDGE_9,TRACK_EDGE_10," +
-                    "TRACK_EDGE_11,TRACK_EDGE_12,TRACK_EDGE_13,TRACK_EDGE_14,TRACK_EDGE_15,TRACK_EDGE_16,TRACK_EDGE_17");
-            /*reader = new BufferedReader(new FileReader("test.csv"));
-            lines = new ArrayList<String>();
-            String line = null;
-            while ((line = reader.readLine()) != null) {
-                lines.add(line);
-            }*/
+            if(!simulate) {
+                pw = new PrintWriter(new File("test.csv"));
+                pw.println("ACCELERATION,BRAKE,STEERING,SPEED,TRACK_POSITION,ANGLE_TO_TRACK_AXIS,TRACK_EDGE_0,TRACK_EDGE_1,TRACK_EDGE_2," +
+                        "TRACK_EDGE_3,TRACK_EDGE_4,TRACK_EDGE_5,TRACK_EDGE_6,TRACK_EDGE_7,TRACK_EDGE_8,TRACK_EDGE_9,TRACK_EDGE_10," +
+                        "TRACK_EDGE_11,TRACK_EDGE_12,TRACK_EDGE_13,TRACK_EDGE_14,TRACK_EDGE_15,TRACK_EDGE_16,TRACK_EDGE_17");
+            } else {
+                reader = new BufferedReader(new FileReader("test.csv"));
+                lines = new ArrayList<String>();
+                String line = null;
+                while ((line = reader.readLine()) != null) {
+                    lines.add(line);
+                }
+            }
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         } catch (IOException e) {
@@ -72,7 +80,7 @@ public class DefaultDriver extends AbstractDriver {
     private void initialize() {
         this.enableExtras(new AutomatedClutch());
         this.enableExtras(new AutomatedGearbox());
-        //this.enableExtras(new AutomatedRecovering());
+        this.enableExtras(new AutomatedRecovering());
         this.enableExtras(new ABS());
     }
 
@@ -106,28 +114,34 @@ public class DefaultDriver extends AbstractDriver {
     @Override
     public Action controlWarmUp(SensorModel sensors) {
         Action action = new Action();
-        //return defaultControl(action, sensors);
-        return keyboardControl(action, sensors);
+        if(!simulate) {
+            return keyboardControl(action, sensors);
+        }
+        return defaultControl(action, sensors);
     }
 
     @Override
     public Action controlQualification(SensorModel sensors) {
         Action action = new Action();
-        //return defaultControl(action, sensors);
-        return keyboardControl(action, sensors);
+        if(!simulate) {
+            return keyboardControl(action, sensors);
+        }
+        return defaultControl(action, sensors);
     }
 
     @Override
     public Action controlRace(SensorModel sensors) {
         Action action = new Action();
-        //return defaultControl(action, sensors);
-        return keyboardControl(action, sensors);
+        if(!simulate) {
+            return keyboardControl(action, sensors);
+        }
+        return defaultControl(action, sensors);
     }
 
+    // used to simulate the data
     @Override
     public Action defaultControl(Action action, SensorModel sensors) {
         count += 1;
-        System.out.println(count);
         if (action == null) {
             action = new Action();
         }
@@ -182,6 +196,7 @@ public class DefaultDriver extends AbstractDriver {
         System.out.println("Focus sensor: "+ s);
         System.out.println("Track position: "+sensors.getTrackPosition());
         System.out.println("-----------------------------------------------");*/
+
         return action;
     }
 
@@ -192,12 +207,7 @@ public class DefaultDriver extends AbstractDriver {
         if (action == null) {
             action = new Action();
         }
-        if(sensors.getGear()==-1)
-        {
-            action.gear=0;
-            action.brake=0.0D;
-            action.accelerate=1.0D;
-        }
+
         if(upPressed) action.accelerate = 1.0D;
         if(upReleased) {
             action.accelerate = 0.0D;
@@ -213,7 +223,7 @@ public class DefaultDriver extends AbstractDriver {
         }
         if(rightPressed) {
             if(rightCumulSteering>=0) {
-                rightCumulSteering = -0.1D;
+                rightCumulSteering = -0.3D;
             }
             else if(rightCumulSteering>(steerSensitivity-1))
                 rightCumulSteering-=steerSensitivity;
@@ -229,7 +239,7 @@ public class DefaultDriver extends AbstractDriver {
         if(leftPressed)
         {
             if(leftCumulSteering<=0)
-                leftCumulSteering = 0.1D;
+                leftCumulSteering = 0.3D;
             else if(leftCumulSteering<(1-steerSensitivity))
                 leftCumulSteering += steerSensitivity;
             else
@@ -243,10 +253,10 @@ public class DefaultDriver extends AbstractDriver {
             leftCumulSteering=0.0D;
         }
 
-         System.out.println("--------------" + getDriverName() + "--------------");
-         System.out.println("Steering: " + action.steering);
-         System.out.println("Acceleration: " + action.accelerate);
-         System.out.println("Brake: " + action.brake);
+        /*System.out.println("--------------" + getDriverName() + "--------------");
+        System.out.println("Steering: " + action.steering);
+        System.out.println("Acceleration: " + action.accelerate);
+        System.out.println("Brake: " + action.brake);*/
 
         String s = "";
         s += action.accelerate + "," + action.brake + "," + action.steering + "," + sensors.getSpeed() + "," +
@@ -269,6 +279,7 @@ public class DefaultDriver extends AbstractDriver {
 
         @Override
         public void keyPressed(KeyEvent e) {
+            //System.out.println("Key pressed ");
 
             if(e.getKeyCode() == KeyEvent.VK_UP) {
                 upPressed = true;
@@ -297,6 +308,7 @@ public class DefaultDriver extends AbstractDriver {
 
         @Override
         public void keyReleased(KeyEvent e) {
+            //System.out.println("Key released ");
 
             if(e.getKeyCode() == KeyEvent.VK_UP) {
                 upReleased = true;
