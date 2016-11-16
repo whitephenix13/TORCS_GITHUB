@@ -5,6 +5,10 @@ import cicontest.torcs.controller.extras.AutomatedClutch;
 import cicontest.torcs.controller.extras.AutomatedGearbox;
 import cicontest.torcs.controller.extras.AutomatedRecovering;
 import cicontest.torcs.genome.IGenome;
+import org.encog.ml.data.MLData;
+import org.encog.ml.data.MLDataPair;
+import org.encog.neural.data.NeuralDataSet;
+import org.encog.neural.data.basic.BasicNeuralDataSet;
 import scr.Action;
 import scr.SensorModel;
 
@@ -47,23 +51,27 @@ public class DefaultDriver extends AbstractDriver {
     // change this value to choose whether to simulate or control the car
     private boolean simulate = false;
 
+    // change this value to simulate test on trained neural net
+    private boolean testNeural = true;
+
     public DefaultDriver() {
         initialize();
-        neuralNetwork = new NeuralNetwork(12, 8, 2);
+        neuralNetwork = new NeuralNetwork(22, 14, 3);
+        neuralNetwork.storeGenome();
         //neuralNetwork = neuralNetwork.loadGenome();
-        if(!simulate) {
+        if(!simulate && !testNeural) {
             focusFrame = new FocusFrame();
             focusFrame.requestFocus();
         }
 
         try {
-            if(!simulate) {
+            if(!simulate && !testNeural) {
                 pw = new PrintWriter(new File("test.csv"));
                 pw.println("ACCELERATION,BRAKE,STEERING,SPEED,TRACK_POSITION,ANGLE_TO_TRACK_AXIS,TRACK_EDGE_0,TRACK_EDGE_1,TRACK_EDGE_2," +
                         "TRACK_EDGE_3,TRACK_EDGE_4,TRACK_EDGE_5,TRACK_EDGE_6,TRACK_EDGE_7,TRACK_EDGE_8,TRACK_EDGE_9,TRACK_EDGE_10," +
-                        "TRACK_EDGE_11,TRACK_EDGE_12,TRACK_EDGE_13,TRACK_EDGE_14,TRACK_EDGE_15,TRACK_EDGE_16,TRACK_EDGE_17");
-            } else {
-                reader = new BufferedReader(new FileReader("test.csv"));
+                        "TRACK_EDGE_11,TRACK_EDGE_12,TRACK_EDGE_13,TRACK_EDGE_14,TRACK_EDGE_15,TRACK_EDGE_16,TRACK_EDGE_17,TRACK_EDGE_18");
+            } else if(simulate && !testNeural) {
+                reader = new BufferedReader(new FileReader("A_Speedway_34_52.csv"));
                 lines = new ArrayList<String>();
                 String line = null;
                 while ((line = reader.readLine()) != null) {
@@ -80,7 +88,7 @@ public class DefaultDriver extends AbstractDriver {
     private void initialize() {
         this.enableExtras(new AutomatedClutch());
         this.enableExtras(new AutomatedGearbox());
-        this.enableExtras(new AutomatedRecovering());
+        //this.enableExtras(new AutomatedRecovering());
         this.enableExtras(new ABS());
     }
 
@@ -114,7 +122,9 @@ public class DefaultDriver extends AbstractDriver {
     @Override
     public Action controlWarmUp(SensorModel sensors) {
         Action action = new Action();
-        if(!simulate) {
+        if(testNeural) {
+            return neuralControl(action, sensors);
+        } else if(!simulate) {
             return keyboardControl(action, sensors);
         }
         return defaultControl(action, sensors);
@@ -123,7 +133,9 @@ public class DefaultDriver extends AbstractDriver {
     @Override
     public Action controlQualification(SensorModel sensors) {
         Action action = new Action();
-        if(!simulate) {
+        if(testNeural) {
+            return neuralControl(action, sensors);
+        } else if(!simulate) {
             return keyboardControl(action, sensors);
         }
         return defaultControl(action, sensors);
@@ -132,10 +144,52 @@ public class DefaultDriver extends AbstractDriver {
     @Override
     public Action controlRace(SensorModel sensors) {
         Action action = new Action();
-        if(!simulate) {
+        if(testNeural) {
+            return neuralControl(action, sensors);
+        } else if(!simulate) {
             return keyboardControl(action, sensors);
         }
         return defaultControl(action, sensors);
+    }
+
+    // used to test trained network
+    public Action neuralControl(Action action, SensorModel sensors) {
+        if (action == null) {
+            action = new Action();
+        }
+
+        double TORCS_INPUT[][] = new double[1][22];
+        double TORCS_IDEAL[][] = new double[1][3];
+
+        // prepare the input
+        TORCS_INPUT[0][0] = sensors.getSpeed();
+        TORCS_INPUT[0][1] = sensors.getTrackPosition();
+        TORCS_INPUT[0][2] = sensors.getAngleToTrackAxis();
+        double[] track_edge_sensors= sensors.getTrackEdgeSensors();
+        for(int j = 0; j < track_edge_sensors.length; j ++) {
+            TORCS_INPUT[0][j+3] = track_edge_sensors[j];
+        }
+
+        //prepare the output
+        TORCS_IDEAL[0][0] = action.accelerate;
+        TORCS_IDEAL[0][1] = action.brake;
+        TORCS_IDEAL[0][2] = action.steering;
+
+        // testing set
+        NeuralDataSet testingSet = new BasicNeuralDataSet(TORCS_INPUT, TORCS_IDEAL);
+
+        MLData output = null;
+        for (MLDataPair neuralDataSet : testingSet) {
+            output = neuralNetwork.network.compute(neuralDataSet.getInput());
+
+            System.out.println("predicted=" + output.getData(0) + " " + output.getData(1) + " " + output.getData(2));
+        }
+
+        action.steering = output.getData(2);
+        action.brake = output.getData(1);
+        action.accelerate = output.getData(0);
+
+        return action;
     }
 
     // used to simulate the data
@@ -145,7 +199,8 @@ public class DefaultDriver extends AbstractDriver {
         if (action == null) {
             action = new Action();
         }
-        if(lines.size() <= count) {
+
+        if(lines.size() <= count){
             action.steering = DriversUtils.alignToTrackAxis(sensors, 0.5);
             if (sensors.getSpeed() > 60.0D) {
                 action.accelerate = 0.0D;
@@ -174,28 +229,6 @@ public class DefaultDriver extends AbstractDriver {
             action.brake = Double.parseDouble(acts[1]);
             action.accelerate = Double.parseDouble(acts[0]);
         }
-
-        /*System.out.println("--------------" + getDriverName() + "--------------");
-        System.out.println("Steering: " + action.steering);
-        System.out.println("Acceleration: " + action.accelerate);
-        System.out.println("Brake: " + action.brake);
-        System.out.println("Angle to track axis: "+ sensors.getAngleToTrackAxis());
-        String s="[";
-        double[] track_edge_sensors= sensors.getTrackEdgeSensors();
-        for(int i=0; i<track_edge_sensors.length;++i) {
-            s += " " + track_edge_sensors[i];
-        }
-        s+="]";
-        System.out.println("Track edge sensors: "+ s);
-        s="[";
-        double[] focus_sensors= sensors.getFocusSensors();
-        for(int i=0; i<focus_sensors.length;++i) {
-            s += " " + focus_sensors[i];
-        }
-        s+="]";
-        System.out.println("Focus sensor: "+ s);
-        System.out.println("Track position: "+sensors.getTrackPosition());
-        System.out.println("-----------------------------------------------");*/
 
         return action;
     }
@@ -253,11 +286,6 @@ public class DefaultDriver extends AbstractDriver {
             leftCumulSteering=0.0D;
         }
 
-        /*System.out.println("--------------" + getDriverName() + "--------------");
-        System.out.println("Steering: " + action.steering);
-        System.out.println("Acceleration: " + action.accelerate);
-        System.out.println("Brake: " + action.brake);*/
-
         String s = "";
         s += action.accelerate + "," + action.brake + "," + action.steering + "," + sensors.getSpeed() + "," +
                 sensors.getTrackPosition() + "," + sensors.getAngleToTrackAxis();
@@ -279,7 +307,6 @@ public class DefaultDriver extends AbstractDriver {
 
         @Override
         public void keyPressed(KeyEvent e) {
-            //System.out.println("Key pressed ");
 
             if(e.getKeyCode() == KeyEvent.VK_UP) {
                 upPressed = true;
@@ -308,7 +335,6 @@ public class DefaultDriver extends AbstractDriver {
 
         @Override
         public void keyReleased(KeyEvent e) {
-            //System.out.println("Key released ");
 
             if(e.getKeyCode() == KeyEvent.VK_UP) {
                 upReleased = true;
