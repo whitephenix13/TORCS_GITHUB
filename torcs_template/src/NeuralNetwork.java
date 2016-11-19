@@ -30,6 +30,8 @@ public class NeuralNetwork implements Serializable {
     int inputs;
     int hidden;
     int outputs;
+    int numberLoop = 5000;
+    double tolerance= 0.0001;
 
     NeuralNetwork(int _inputs, int _hidden, int _outputs) {
         inputs=_inputs;
@@ -57,14 +59,21 @@ public class NeuralNetwork implements Serializable {
         prepareData(trainingSetNames);
 
         //TODO: put 25 input
-        double TORCS_INPUT[][] = new double[lines.size()][22];
+        double TORCS_INPUT[][] = new double[lines.size()][25];
         double TORCS_IDEAL[][] = new double[lines.size()][3];
 
         // prepare the input
+        String[] previousOutput = {"0.0","0.0","0.0"};
         for(int i = 0; i < lines.size(); i++) {
             String data[] = lines.get(i).split(",");
-            for(int j = 3; j < data.length; j ++) {
-                TORCS_INPUT[i][j-3] = Double.parseDouble(data[j]);
+            for(int j = 0; j < data.length; j ++) {
+                if(j<3)
+                {
+                    TORCS_INPUT[i][j] =Double.parseDouble(previousOutput[j]);
+                    previousOutput[j]=data[j];
+                }
+                else
+                    TORCS_INPUT[i][j] = Double.parseDouble(data[j]);
             }
         }
 
@@ -95,24 +104,28 @@ public class NeuralNetwork implements Serializable {
             System.out.println("Epoch #" + epoch + " Error:" + train.getError());
             epoch++;
 
-        } while(train.getError() > 0.0001 && epoch < 5000);
+        } while(train.getError() > tolerance && epoch < numberLoop);
 
         //printTrainingResult(trainingSet);
         Encog.getInstance().shutdown();
     }
 
-    public double[] predict(SensorModel sensors)
+    public double[] predict(SensorModel sensors,double[] previousOutputs)
     {
-        double TORCS_INPUT[][] = new double[1][22];
+        //previousOutputs correspond to previous accelerate, brake, steering
+        double TORCS_INPUT[][] = new double[1][25];
         double TORCS_IDEAL[][] = new double[1][3];
 
         // prepare the input
-        TORCS_INPUT[0][0] = sensors.getSpeed();
-        TORCS_INPUT[0][1] = sensors.getTrackPosition();
-        TORCS_INPUT[0][2] = sensors.getAngleToTrackAxis();
+        TORCS_INPUT[0][0] = previousOutputs[0];
+        TORCS_INPUT[0][1] = previousOutputs[1];
+        TORCS_INPUT[0][2] = previousOutputs[2];
+        TORCS_INPUT[0][3] = sensors.getSpeed();
+        TORCS_INPUT[0][4] = sensors.getTrackPosition();
+        TORCS_INPUT[0][5] = sensors.getAngleToTrackAxis();
         double[] track_edge_sensors= sensors.getTrackEdgeSensors();
         for(int j = 0; j < track_edge_sensors.length; j ++) {
-            TORCS_INPUT[0][j+3] = track_edge_sensors[j];
+            TORCS_INPUT[0][j+6] = track_edge_sensors[j];
         }
 
         //prepare the output: unused value
@@ -129,9 +142,11 @@ public class NeuralNetwork implements Serializable {
             //System.out.println("predicted=" + output.getData(0) + " " + output.getData(1) + " " + output.getData(2));
         }
         double[] outputs = new double[3];
-        outputs[0]= MLoutputs.getData(0);
-        outputs[1]= MLoutputs.getData(1);
-        outputs[2]= MLoutputs.getData(2);
+        for(int i = 0; i<3; ++i)
+        {
+            outputs[i]= MLoutputs.getData(i);
+            previousOutputs[i]=outputs[i];//This SHOULD modify the array passed as parameter
+        }
         return outputs;
     }
     public double getOutput(SensorModel a) {

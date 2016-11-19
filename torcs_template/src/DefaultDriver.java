@@ -54,14 +54,16 @@ public class DefaultDriver extends AbstractDriver {
 
     // change this value to simulate test on trained neural net
     private boolean testNeural = true;
-    private boolean trainNeural = false;
-    private boolean saveNeural =false;
+    private boolean trainNeural = true;
+    private boolean saveNeural =true;
+    private double[] previous_outputs={0.0D,0.0D,0.0D};
+
     public DefaultDriver() {
         initialize();
         if(trainNeural)
         {
             neuralNetwork = new NeuralNetwork(22, 14, 3);
-            String[] trainingSetNames = {"A_Speedway_34_52.csv","Corkscrew_01_26_01.csv","Michigan_41_65.csv"};
+            String[] trainingSetNames = {"A_Speedway_34_52.csv","Corkscrew_01_26_01.csv","Michigan_41_65.csv","GC_track2_59_74"};
             neuralNetwork.Train(trainingSetNames);
             if(saveNeural)
                 neuralNetwork.storeGenome();
@@ -168,11 +170,11 @@ public class DefaultDriver extends AbstractDriver {
         if (action == null) {
             action = new Action();
         }
-
-        double[] predicted_outputs = neuralNetwork.predict(sensors);
+        double[] predicted_outputs = neuralNetwork.predict(sensors,previous_outputs);
         action.accelerate = predicted_outputs[0];
         action.brake = predicted_outputs[1];
         action.steering = predicted_outputs[2];
+        System.out.println("predicted= Acc " + predicted_outputs[0] + " Brake " + predicted_outputs[1] + " Steering " + predicted_outputs[2]);
 
         return action;
     }
