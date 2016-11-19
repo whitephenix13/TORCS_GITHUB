@@ -30,7 +30,7 @@ public class NeuralNetwork implements Serializable {
     int inputs;
     int hidden;
     int outputs;
-    int numberLoop = 5000;
+    int numberLoop = 1000;
     double tolerance= 0.0001;
 
     NeuralNetwork(int _inputs, int _hidden, int _outputs) {
@@ -99,12 +99,28 @@ public class NeuralNetwork implements Serializable {
         // train the network
         final Train train = new ResilientPropagation(network, trainingSet);
         int epoch = 1;
+        long startTime =System.currentTimeMillis();
         do {
+
             train.iteration();
-            System.out.println("Epoch #" + epoch + " Error:" + train.getError());
+            if(epoch%10==9) {
+                //TIME is accurate only after 40% or 30 sec
+                long currentTime=System.currentTimeMillis();
+                long elapsed =(currentTime-startTime)/1000;
+                double timetowait= ((double)numberLoop*elapsed)/epoch-elapsed;
+                double temp = ((double)numberLoop*elapsed)/epoch;
+                int hour = (int)(timetowait/3600);
+                int min = (int)( timetowait/60- hour*60);
+                int sec = (int)(timetowait - hour*3600 - min *60);
+                String shour = hour<10? "0"+hour:""+hour;
+                String smin = min<10? "0"+min:""+min;
+                String ssec = sec<10? "0"+sec:""+sec;
+                System.out.println("Error: " + train.getError() + "// Time remaining: " + shour + "h "+ smin + "m "+ssec+"s "+ ((int)epoch*100)/numberLoop + "%");
+            }
             epoch++;
 
         } while(train.getError() > tolerance && epoch < numberLoop);
+        System.out.println("Final Error:" + train.getError());
 
         //printTrainingResult(trainingSet);
         Encog.getInstance().shutdown();

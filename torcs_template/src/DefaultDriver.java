@@ -62,8 +62,8 @@ public class DefaultDriver extends AbstractDriver {
         initialize();
         if(trainNeural)
         {
-            neuralNetwork = new NeuralNetwork(22, 14, 3);
-            String[] trainingSetNames = {"A_Speedway_34_52.csv","Corkscrew_01_26_01.csv","Michigan_41_65.csv","GC_track2_59_74"};
+            neuralNetwork = new NeuralNetwork(25, 100, 3);
+            String[] trainingSetNames = {"A_Speedway_34_52.csv","Corkscrew_01_26_01.csv","Michigan_41_65.csv","GC_track2_59_74.csv"};
             neuralNetwork.Train(trainingSetNames);
             if(saveNeural)
                 neuralNetwork.storeGenome();
