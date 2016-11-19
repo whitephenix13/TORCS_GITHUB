@@ -9,6 +9,7 @@ import org.encog.ml.data.MLData;
 import org.encog.ml.data.MLDataPair;
 import org.encog.neural.data.NeuralDataSet;
 import org.encog.neural.data.basic.BasicNeuralDataSet;
+import org.encog.neural.networks.BasicNetwork;
 import scr.Action;
 import scr.SensorModel;
 
@@ -53,12 +54,22 @@ public class DefaultDriver extends AbstractDriver {
 
     // change this value to simulate test on trained neural net
     private boolean testNeural = true;
-
+    private boolean trainNeural = false;
+    private boolean saveNeural =false;
     public DefaultDriver() {
         initialize();
-        neuralNetwork = new NeuralNetwork(22, 14, 3);
-        neuralNetwork.storeGenome();
-        //neuralNetwork = neuralNetwork.loadGenome();
+        if(trainNeural)
+        {
+            neuralNetwork = new NeuralNetwork(22, 14, 3);
+            String[] trainingSetNames = {"A_Speedway_34_52.csv","Corkscrew_01_26_01.csv","Michigan_41_65.csv"};
+            neuralNetwork.Train(trainingSetNames);
+            if(saveNeural)
+                neuralNetwork.storeGenome();
+        }
+        else
+        {
+            neuralNetwork=new NeuralNetwork(true);
+        }
         if(!simulate && !testNeural) {
             focusFrame = new FocusFrame();
             focusFrame.requestFocus();
@@ -158,36 +169,10 @@ public class DefaultDriver extends AbstractDriver {
             action = new Action();
         }
 
-        double TORCS_INPUT[][] = new double[1][22];
-        double TORCS_IDEAL[][] = new double[1][3];
-
-        // prepare the input
-        TORCS_INPUT[0][0] = sensors.getSpeed();
-        TORCS_INPUT[0][1] = sensors.getTrackPosition();
-        TORCS_INPUT[0][2] = sensors.getAngleToTrackAxis();
-        double[] track_edge_sensors= sensors.getTrackEdgeSensors();
-        for(int j = 0; j < track_edge_sensors.length; j ++) {
-            TORCS_INPUT[0][j+3] = track_edge_sensors[j];
-        }
-
-        //prepare the output
-        TORCS_IDEAL[0][0] = action.accelerate;
-        TORCS_IDEAL[0][1] = action.brake;
-        TORCS_IDEAL[0][2] = action.steering;
-
-        // testing set
-        NeuralDataSet testingSet = new BasicNeuralDataSet(TORCS_INPUT, TORCS_IDEAL);
-
-        MLData output = null;
-        for (MLDataPair neuralDataSet : testingSet) {
-            output = neuralNetwork.network.compute(neuralDataSet.getInput());
-
-            System.out.println("predicted=" + output.getData(0) + " " + output.getData(1) + " " + output.getData(2));
-        }
-
-        action.steering = output.getData(2);
-        action.brake = output.getData(1);
-        action.accelerate = output.getData(0);
+        double[] predicted_outputs = neuralNetwork.predict(sensors);
+        action.accelerate = predicted_outputs[0];
+        action.brake = predicted_outputs[1];
+        action.steering = predicted_outputs[2];
 
         return action;
     }

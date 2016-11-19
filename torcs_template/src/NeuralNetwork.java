@@ -14,7 +14,10 @@ import scr.SensorModel;
 
 import java.io.*;
 import java.util.*;
-
+/*
+* TODO:
+* Use previous output as input: modify also predict
+* */
 public class NeuralNetwork implements Serializable {
 
     private static final long serialVersionUID = -88L;
@@ -24,20 +27,36 @@ public class NeuralNetwork implements Serializable {
     List<String> result = null;
     String line = null;
     BasicNetwork network = null;
+    int inputs;
+    int hidden;
+    int outputs;
 
-    NeuralNetwork(int inputs, int hidden, int outputs) {
+    NeuralNetwork(int _inputs, int _hidden, int _outputs) {
+        inputs=_inputs;
+        hidden=_hidden;
+        outputs=_outputs;
+    }
+    NeuralNetwork(boolean loadFromMemory) {
+        if(loadFromMemory)
+        {
+            NeuralNetwork net = loadGenome();
+            lines=net.lines;
+            result=net.result;
+            line=net.line;
+            network=net.network;
+            inputs= net.inputs;
+            hidden=net.hidden;
+            outputs=net.outputs;
+        }
+    }
 
+    public void Train(String[] trainingSetNames)
+    {
         // prepare training data, removing the first line of every .csv files
         lines = new ArrayList<>();
+        prepareData(trainingSetNames);
 
-        //prepareData("train_data/aalborg.csv");
-        //prepareData("train_data/alpine-1.csv");
-        //prepareData("train_data/f-speedway.csv");
-        //prepareData("A_Speedway_34_52.csv");
-        //prepareData("A_Speedway_34_52_2.csv");
-        //prepareData("Corkscrew_01_26_01.csv");
-        prepareData("Michigan_41_65.csv");
-
+        //TODO: put 25 input
         double TORCS_INPUT[][] = new double[lines.size()][22];
         double TORCS_IDEAL[][] = new double[lines.size()][3];
 
@@ -79,10 +98,42 @@ public class NeuralNetwork implements Serializable {
         } while(train.getError() > 0.0001 && epoch < 5000);
 
         //printTrainingResult(trainingSet);
-
         Encog.getInstance().shutdown();
     }
 
+    public double[] predict(SensorModel sensors)
+    {
+        double TORCS_INPUT[][] = new double[1][22];
+        double TORCS_IDEAL[][] = new double[1][3];
+
+        // prepare the input
+        TORCS_INPUT[0][0] = sensors.getSpeed();
+        TORCS_INPUT[0][1] = sensors.getTrackPosition();
+        TORCS_INPUT[0][2] = sensors.getAngleToTrackAxis();
+        double[] track_edge_sensors= sensors.getTrackEdgeSensors();
+        for(int j = 0; j < track_edge_sensors.length; j ++) {
+            TORCS_INPUT[0][j+3] = track_edge_sensors[j];
+        }
+
+        //prepare the output: unused value
+        TORCS_IDEAL[0][0] = 0;
+        TORCS_IDEAL[0][1] = 0;
+        TORCS_IDEAL[0][2] = 0;
+
+        // Data storage class in order to used them in .compute() function
+        NeuralDataSet neuralData = new BasicNeuralDataSet(TORCS_INPUT, TORCS_IDEAL);
+
+        MLData MLoutputs = null;
+        for (MLDataPair neuralDataSet : neuralData) {
+            MLoutputs = network.compute(neuralDataSet.getInput());
+            //System.out.println("predicted=" + output.getData(0) + " " + output.getData(1) + " " + output.getData(2));
+        }
+        double[] outputs = new double[3];
+        outputs[0]= MLoutputs.getData(0);
+        outputs[1]= MLoutputs.getData(1);
+        outputs[2]= MLoutputs.getData(2);
+        return outputs;
+    }
     public double getOutput(SensorModel a) {
         return 0.5;
     }
@@ -135,18 +186,20 @@ public class NeuralNetwork implements Serializable {
         return null;
     }
 
-    private void prepareData(String filename) {
+    private void prepareData(String[] filenames) {
         // data preparation
-        try {
-            BufferedReader reader = new BufferedReader(new FileReader(filename));
-            reader.readLine(); // this will read the first line
-            while ((line = reader.readLine()) != null) {
-                lines.add(line);
+        for(int i=0; i<filenames.length; ++i) {
+            try {
+                BufferedReader reader = new BufferedReader(new FileReader(filenames[i]));
+                reader.readLine(); // this will read the first line
+                while ((line = reader.readLine()) != null) {
+                    lines.add(line);
+                }
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
         }
     }
 
