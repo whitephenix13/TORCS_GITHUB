@@ -7,7 +7,7 @@ import cicontest.torcs.controller.Driver;
 import cicontest.torcs.controller.Human;
 import race.TorcsConfiguration;
 
-public class DefaultDriverAlgorithm extends AbstractAlgorithm {
+public class DefaultDriverAlgorithm{
 
     private static final long serialVersionUID = 654963126362653L;
 
@@ -41,7 +41,8 @@ public class DefaultDriverAlgorithm extends AbstractAlgorithm {
     }
 
     public static void main(String[] args) {
-
+        GP gp = new GP();
+        gp.evolve();
         //Set path to torcs.properties
         TorcsConfiguration.getInstance().initialize(new File("torcs.properties"));
         /*
