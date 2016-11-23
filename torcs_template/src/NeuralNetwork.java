@@ -28,16 +28,17 @@ public class NeuralNetwork implements Serializable {
     String line = null;
     BasicNetwork network = null;
     int inputs;
-    int hidden;
+    int[] layerConfig;
     int outputs;
-    int numberLoop = 1000;
+    int numberLoop = 10000;
     double tolerance= 0.0001;
 
-    NeuralNetwork(int _inputs, int _hidden, int _outputs) {
+    NeuralNetwork(int _inputs, int[] _layerConfig, int _outputs) {
         inputs=_inputs;
-        hidden=_hidden;
+        layerConfig=_layerConfig;
         outputs=_outputs;
     }
+
     NeuralNetwork(boolean loadFromMemory) {
         if(loadFromMemory)
         {
@@ -47,7 +48,7 @@ public class NeuralNetwork implements Serializable {
             line=net.line;
             network=net.network;
             inputs= net.inputs;
-            hidden=net.hidden;
+            layerConfig=net.layerConfig;
             outputs=net.outputs;
         }
     }
@@ -91,7 +92,9 @@ public class NeuralNetwork implements Serializable {
         // setup the network
         network = new BasicNetwork();
         network.addLayer(new BasicLayer(new ActivationSigmoid(), true, inputs));
-        network.addLayer(new BasicLayer(new ActivationSigmoid(), true, hidden));
+        for (int i = 0; i < layerConfig.length; i ++) {
+            network.addLayer(new BasicLayer(new ActivationSigmoid(), true, layerConfig[i]));
+        }
         network.addLayer(new BasicLayer(new ActivationSigmoid(), true, outputs));
         network.getStructure().finalizeStructure();
         network.reset();

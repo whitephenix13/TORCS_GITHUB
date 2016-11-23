@@ -5,16 +5,10 @@ import cicontest.torcs.controller.extras.AutomatedClutch;
 import cicontest.torcs.controller.extras.AutomatedGearbox;
 import cicontest.torcs.controller.extras.AutomatedRecovering;
 import cicontest.torcs.genome.IGenome;
-import org.encog.ml.data.MLData;
-import org.encog.ml.data.MLDataPair;
-import org.encog.neural.data.NeuralDataSet;
-import org.encog.neural.data.basic.BasicNeuralDataSet;
-import org.encog.neural.networks.BasicNetwork;
 import scr.Action;
 import scr.SensorModel;
 
 import javax.swing.*;
-import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.io.*;
@@ -55,16 +49,22 @@ public class DefaultDriver extends AbstractDriver {
     // change this value to simulate test on trained neural net
     private boolean testNeural = true;
     private boolean trainNeural = true;
-    private boolean saveNeural =true;
+    private boolean saveNeural = false;
     private double[] previous_outputs={0.0D,0.0D,0.0D};
+
+    // change this value to determine how many hidden layers and the size of it
+    private int[] layersConfig = {25, 25};
 
     public DefaultDriver() {
         initialize();
         if(trainNeural)
         {
-            neuralNetwork = new NeuralNetwork(25, 100, 3);
-            String[] trainingSetNames = {"A_Speedway_34_52.csv","Corkscrew_01_26_01.csv","Michigan_41_65.csv","GC_track2_59_74.csv"};
-            neuralNetwork.Train(trainingSetNames);
+            neuralNetwork = new NeuralNetwork(25, layersConfig, 3);
+            //String[] trainingSetNames = {"train_data/f-speedway.csv","train_data/aalborg.csv","train_data/alpine-1.csv"};
+            //neuralNetwork.Train(trainingSetNames);
+            //,"Corkscrew_01_26_01.csv","Michigan_41_65.csv","GC_track2_59_74.csv"
+            String[] trainingSetNames2 = {"A_Speedway_34_52.csv"};
+            neuralNetwork.Train(trainingSetNames2);
             if(saveNeural)
                 neuralNetwork.storeGenome();
         }
@@ -101,7 +101,7 @@ public class DefaultDriver extends AbstractDriver {
     private void initialize() {
         this.enableExtras(new AutomatedClutch());
         this.enableExtras(new AutomatedGearbox());
-        //this.enableExtras(new AutomatedRecovering());
+        this.enableExtras(new AutomatedRecovering());
         this.enableExtras(new ABS());
     }
 
