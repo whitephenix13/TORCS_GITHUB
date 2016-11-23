@@ -17,6 +17,7 @@ import java.util.List;
 
 public class DefaultDriver extends AbstractDriver {
 
+    private TRACK_NAME track_name;
     // test
     private NeuralNetwork neuralNetwork;
 
@@ -63,8 +64,8 @@ public class DefaultDriver extends AbstractDriver {
             //String[] trainingSetNames = {"train_data/f-speedway.csv","train_data/aalborg.csv","train_data/alpine-1.csv"};
             //neuralNetwork.Train(trainingSetNames);
             //,"Corkscrew_01_26_01.csv","Michigan_41_65.csv","GC_track2_59_74.csv"
-            String[] trainingSetNames2 = {"A_Speedway_34_52.csv"};
-            neuralNetwork.Train(trainingSetNames2);
+            String[] trainingSetNames = {track_name.A_SPEEDWAY,track_name.A_SPEEDWAY_M};
+            neuralNetwork.Train(trainingSetNames);
             if(saveNeural)
                 neuralNetwork.storeGenome();
         }
@@ -79,12 +80,12 @@ public class DefaultDriver extends AbstractDriver {
 
         try {
             if(!simulate && !testNeural) {
-                pw = new PrintWriter(new File("test.csv"));
+                pw = new PrintWriter(new File("test"+".csv"));
                 pw.println("ACCELERATION,BRAKE,STEERING,SPEED,TRACK_POSITION,ANGLE_TO_TRACK_AXIS,TRACK_EDGE_0,TRACK_EDGE_1,TRACK_EDGE_2," +
                         "TRACK_EDGE_3,TRACK_EDGE_4,TRACK_EDGE_5,TRACK_EDGE_6,TRACK_EDGE_7,TRACK_EDGE_8,TRACK_EDGE_9,TRACK_EDGE_10," +
                         "TRACK_EDGE_11,TRACK_EDGE_12,TRACK_EDGE_13,TRACK_EDGE_14,TRACK_EDGE_15,TRACK_EDGE_16,TRACK_EDGE_17,TRACK_EDGE_18");
             } else if(simulate && !testNeural) {
-                reader = new BufferedReader(new FileReader("A_Speedway_34_52.csv"));
+                reader = new BufferedReader(new FileReader(track_name.A_SPEEDWAY+".csv"));
                 lines = new ArrayList<String>();
                 String line = null;
                 while ((line = reader.readLine()) != null) {
@@ -280,6 +281,7 @@ public class DefaultDriver extends AbstractDriver {
         for(int i=0; i<track_edge_sensors.length;++i) {
             s += "," + track_edge_sensors[i];
         }
+        System.out.println("s: "+ s);
         pw.println(s);
 
         return action;
