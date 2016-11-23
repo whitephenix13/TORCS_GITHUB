@@ -53,17 +53,17 @@ public class DefaultDriver extends AbstractDriver {
     private boolean simulate = false;
 
     // change this value to simulate test on trained neural net
-    private boolean testNeural = true;
-    private boolean trainNeural = true;
-    private boolean saveNeural =true;
+    private boolean testNeural = false;
+    private boolean trainNeural = false;
+    private boolean saveNeural =false;
     private double[] previous_outputs={0.0D,0.0D,0.0D};
 
     public DefaultDriver() {
         initialize();
         if(trainNeural)
         {
-            neuralNetwork = new NeuralNetwork(25, 100, 3);
-            String[] trainingSetNames = {"A_Speedway_34_52.csv","Corkscrew_01_26_01.csv","Michigan_41_65.csv","GC_track2_59_74.csv"};
+            neuralNetwork = new NeuralNetwork(25, 30, 3);
+            String[] trainingSetNames = {"A_Speedway_34_52.csv","GC_track2_59_74.csv","E_track2_02_07_92.csv"};
             neuralNetwork.Train(trainingSetNames);
             if(saveNeural)
                 neuralNetwork.storeGenome();
@@ -101,7 +101,7 @@ public class DefaultDriver extends AbstractDriver {
     private void initialize() {
         this.enableExtras(new AutomatedClutch());
         this.enableExtras(new AutomatedGearbox());
-        //this.enableExtras(new AutomatedRecovering());
+        this.enableExtras(new AutomatedRecovering());
         this.enableExtras(new ABS());
     }
 
@@ -280,6 +280,7 @@ public class DefaultDriver extends AbstractDriver {
         for(int i=0; i<track_edge_sensors.length;++i) {
             s += "," + track_edge_sensors[i];
         }
+        System.out.println("s: "+ s);
         pw.println(s);
 
         return action;

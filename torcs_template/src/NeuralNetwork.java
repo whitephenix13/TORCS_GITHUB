@@ -30,7 +30,7 @@ public class NeuralNetwork implements Serializable {
     int inputs;
     int hidden;
     int outputs;
-    int numberLoop = 1000;
+    int numberLoop = 5000;
     double tolerance= 0.0001;
 
     NeuralNetwork(int _inputs, int _hidden, int _outputs) {
