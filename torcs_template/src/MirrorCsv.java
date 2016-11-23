@@ -11,7 +11,7 @@ public class MirrorCsv {
 
     static List<String>  lines = null;
     public static void main(String[] args) {
-        generate_mirror("A_Speedway_34_52");
+        generate_mirror("train_data/f-speedway");
     }
 
     private static String minusS(String s)

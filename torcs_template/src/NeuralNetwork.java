@@ -1,5 +1,8 @@
 import org.encog.Encog;
+import org.encog.engine.network.activation.ActivationElliott;
+import org.encog.engine.network.activation.ActivationLinear;
 import org.encog.engine.network.activation.ActivationSigmoid;
+import org.encog.engine.network.activation.ActivationTANH;
 import org.encog.ml.data.MLData;
 import org.encog.ml.data.MLDataPair;
 import org.encog.neural.data.NeuralDataSet;
@@ -30,7 +33,7 @@ public class NeuralNetwork implements Serializable {
     int inputs;
     int[] layerConfig;
     int outputs;
-    int numberLoop = 10000;
+    int numberLoop = 5000;
     double tolerance= 0.0001;
 
     NeuralNetwork(int _inputs, int[] _layerConfig, int _outputs) {
@@ -91,11 +94,11 @@ public class NeuralNetwork implements Serializable {
 
         // setup the network
         network = new BasicNetwork();
-        network.addLayer(new BasicLayer(new ActivationSigmoid(), true, inputs));
+        network.addLayer(new BasicLayer(new ActivationLinear(), true, inputs));
         for (int i = 0; i < layerConfig.length; i ++) {
-            network.addLayer(new BasicLayer(new ActivationSigmoid(), true, layerConfig[i]));
+            network.addLayer(new BasicLayer(new ActivationTANH(), true, layerConfig[i]));
         }
-        network.addLayer(new BasicLayer(new ActivationSigmoid(), true, outputs));
+        network.addLayer(new BasicLayer(new ActivationTANH(), true, outputs));
         network.getStructure().finalizeStructure();
         network.reset();
 

@@ -17,7 +17,7 @@ import java.util.List;
 
 public class DefaultDriver extends AbstractDriver {
 
-    private TRACK_NAME track_name;
+    private TRACK_NAME trackName;
     // test
     private NeuralNetwork neuralNetwork;
 
@@ -49,12 +49,12 @@ public class DefaultDriver extends AbstractDriver {
 
     // change this value to simulate test on trained neural net
     private boolean testNeural = true;
-    private boolean trainNeural = true;
+    private boolean trainNeural = false;
     private boolean saveNeural = false;
     private double[] previous_outputs={0.0D,0.0D,0.0D};
 
     // change this value to determine how many hidden layers and the size of it
-    private int[] layersConfig = {25, 25};
+    private int[] layersConfig = {25, 25, 25, 25, 25};
 
     public DefaultDriver() {
         initialize();
@@ -64,7 +64,7 @@ public class DefaultDriver extends AbstractDriver {
             //String[] trainingSetNames = {"train_data/f-speedway.csv","train_data/aalborg.csv","train_data/alpine-1.csv"};
             //neuralNetwork.Train(trainingSetNames);
             //,"Corkscrew_01_26_01.csv","Michigan_41_65.csv","GC_track2_59_74.csv"
-            String[] trainingSetNames = {track_name.F_SPEEDWAY};
+            String[] trainingSetNames = {trackName.F_SPEEDWAY, trackName.F_SPEEDWAY_M};
             neuralNetwork.Train(trainingSetNames);
             if(saveNeural)
                 neuralNetwork.storeGenome();
@@ -85,7 +85,7 @@ public class DefaultDriver extends AbstractDriver {
                         "TRACK_EDGE_3,TRACK_EDGE_4,TRACK_EDGE_5,TRACK_EDGE_6,TRACK_EDGE_7,TRACK_EDGE_8,TRACK_EDGE_9,TRACK_EDGE_10," +
                         "TRACK_EDGE_11,TRACK_EDGE_12,TRACK_EDGE_13,TRACK_EDGE_14,TRACK_EDGE_15,TRACK_EDGE_16,TRACK_EDGE_17,TRACK_EDGE_18");
             } else if(simulate && !testNeural) {
-                reader = new BufferedReader(new FileReader(track_name.A_SPEEDWAY+".csv"));
+                reader = new BufferedReader(new FileReader(trackName.A_SPEEDWAY_M+".csv"));
                 lines = new ArrayList<String>();
                 String line = null;
                 while ((line = reader.readLine()) != null) {
