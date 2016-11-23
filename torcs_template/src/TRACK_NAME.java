@@ -13,7 +13,7 @@ public class TRACK_NAME {
     public static String GC_TRACK2 = "train_data/GC_track2_59_74";
     public static String MICHIGAN = "train_data/Michigan_41_65";
     public static String STREET1 = "train_data/Street1_01_24_84";
-    public static String F_SPEEDWAY = "train_data/f-speedway.csv";
+    public static String F_SPEEDWAY = "train_data/f-speedway";
 
     //Mirror
     public static String A_SPEEDWAY_M = A_SPEEDWAY+"_mirror";
