@@ -221,7 +221,7 @@ public class NeuralNetwork implements Serializable {
         // data preparation
         for(int i=0; i<filenames.length; ++i) {
             try {
-                BufferedReader reader = new BufferedReader(new FileReader(filenames[i]));
+                BufferedReader reader = new BufferedReader(new FileReader(filenames[i]+".csv"));
                 reader.readLine(); // this will read the first line
                 while ((line = reader.readLine()) != null) {
                     lines.add(line);
