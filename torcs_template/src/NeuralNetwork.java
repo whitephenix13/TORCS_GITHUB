@@ -56,6 +56,24 @@ public class NeuralNetwork implements Serializable {
         }
     }
 
+    public static String convertTime(double time,boolean bmilli)
+    {
+        int factor=1;
+        if(bmilli)
+        {
+            factor=1000;
+        }
+        int hour = (int)(time/(3600*factor));
+        int min = (int)(( time/60- hour*60)/factor);
+        int sec = (int)((time - hour*3600 - min *60)/factor);
+        int milli= (int) (time - hour*3600*factor - min *60*factor -sec*factor) ;
+        String shour = hour<10? "0"+hour:""+hour;
+        String smin = min<10? "0"+min:""+min;
+        String ssec = sec<10? "0"+sec:""+sec;
+        String smilli= milli<10?("000"+milli) : (milli<100?"00"+milli: "0"+milli);
+        return (shour+"h "+smin+"m "+ssec+"s"+ (bmilli?(smilli+"ms"):""));
+    }
+
     public void Train(String[] trainingSetNames)
     {
         // prepare training data, removing the first line of every .csv files
@@ -116,13 +134,8 @@ public class NeuralNetwork implements Serializable {
                 long elapsed =(currentTime-startTime)/1000;
                 double timetowait= ((double)numberLoop*elapsed)/epoch-elapsed;
                 double temp = ((double)numberLoop*elapsed)/epoch;
-                int hour = (int)(timetowait/3600);
-                int min = (int)( timetowait/60- hour*60);
-                int sec = (int)(timetowait - hour*3600 - min *60);
-                String shour = hour<10? "0"+hour:""+hour;
-                String smin = min<10? "0"+min:""+min;
-                String ssec = sec<10? "0"+sec:""+sec;
-                System.out.println("Error: " + train.getError() + "// Time remaining: " + shour + "h "+ smin + "m "+ssec+"s "+ ((int)epoch*100)/numberLoop + "%");
+                String s_time = convertTime(timetowait,false);
+                System.out.println("Error: " + train.getError() + "// Time remaining: " + s_time+ " " +((int)epoch*100)/numberLoop + "%");
             }
             epoch++;
 

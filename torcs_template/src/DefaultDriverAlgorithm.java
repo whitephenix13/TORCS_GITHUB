@@ -13,7 +13,7 @@ public class DefaultDriverAlgorithm extends AbstractAlgorithm {
 
     DefaultDriverGenome[] drivers = new DefaultDriverGenome[1];
     int[] results = new int[1];
-
+    static int numberRun=10;
     public Class<? extends Driver> getDriverClass() {
         return DefaultDriver.class;
     }
@@ -26,11 +26,11 @@ public class DefaultDriverAlgorithm extends AbstractAlgorithm {
 
             //Start a race
             DefaultRace race = new DefaultRace();
-            race.setTrack("aalborg", "road");
-            race.laps = 1;
+            race.setTrack("a-speedway", "road");
+            race.laps = 2;
 
             //for speedup set withGUI to false
-            results = race.runRace(drivers, true);
+            results = race.runRace(drivers, false);
 
             // Save genome/nn
             DriversUtils.storeGenome(drivers[0]);
@@ -68,7 +68,8 @@ public class DefaultDriverAlgorithm extends AbstractAlgorithm {
                 algorithm.run();
             }
         } else {
-            algorithm.run();
+            for(int i = 0 ; i<numberRun ; ++i)
+                 algorithm.run();
         }
     }
 
