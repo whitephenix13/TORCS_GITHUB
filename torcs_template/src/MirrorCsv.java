@@ -8,10 +8,12 @@ import java.util.List;
 public class MirrorCsv {
     private static PrintWriter pw;
     private static BufferedReader reader;
-
+    static TRACK_NAME track;
     static List<String>  lines = null;
     public static void main(String[] args) {
-        generate_mirror("A_Speedway_34_52");
+
+        generate_mirror(track.E_TRACK2);
+        //generate_mirror(track.CORKSCREW);
     }
 
     private static String minusS(String s)
@@ -56,8 +58,11 @@ public class MirrorCsv {
                 String[] acts = act.split(",");
 
                 String s = "";
-                for(int j=0; j<acts.length; ++j)
+                int maxLength= (acts.length>25?25:acts.length);
+                for(int j=0; j<maxLength; ++j)
                 {
+                    if(maxLength<25)
+                        break;
                     if(j==0)
                         s +=acts[j]; //accelerate
                     else if(j==1||j==3)

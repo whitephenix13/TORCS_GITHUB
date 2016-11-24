@@ -30,7 +30,7 @@ public class NeuralNetwork implements Serializable {
     int inputs;
     int[] layerConfig;
     int outputs;
-    int numberLoop = 10000;
+    int numberLoop = 50000;
     double tolerance= 0.0001;
 
     NeuralNetwork(int _inputs, int[] _layerConfig, int _outputs) {
@@ -73,8 +73,9 @@ public class NeuralNetwork implements Serializable {
                     TORCS_INPUT[i][j] =Double.parseDouble(previousOutput[j]);
                     previousOutput[j]=data[j];
                 }
-                else
+                else {
                     TORCS_INPUT[i][j] = Double.parseDouble(data[j]);
+                }
             }
         }
 

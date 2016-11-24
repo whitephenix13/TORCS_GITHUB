@@ -50,21 +50,19 @@ public class DefaultDriver extends AbstractDriver {
     // change this value to simulate test on trained neural net
     private boolean testNeural = true;
     private boolean trainNeural = true;
-    private boolean saveNeural = false;
+    private boolean saveNeural = true;
     private double[] previous_outputs={0.0D,0.0D,0.0D};
 
     // change this value to determine how many hidden layers and the size of it
-    private int[] layersConfig = {25, 25};
-
+    private int[] layersConfig = {30,30,30};
+    //private int[] layersConfig = {25,25,25,25,25,25};
     public DefaultDriver() {
         initialize();
         if(trainNeural)
         {
             neuralNetwork = new NeuralNetwork(25, layersConfig, 3);
-            //String[] trainingSetNames = {"train_data/f-speedway.csv","train_data/aalborg.csv","train_data/alpine-1.csv"};
-            //neuralNetwork.Train(trainingSetNames);
-            //,"Corkscrew_01_26_01.csv","Michigan_41_65.csv","GC_track2_59_74.csv"
-            String[] trainingSetNames = {track_name.A_SPEEDWAY,track_name.A_SPEEDWAY_M};
+            //String[] trainingSetNames = {track_name.A_SPEEDWAY,track_name.A_SPEEDWAY_M,track_name.CORKSCREW,track_name.CORKSCREW_M,track_name.E_TRACK2,track_name.E_TRACK2_M};
+            String[] trainingSetNames = {track_name.A_SPEEDWAY};
             neuralNetwork.Train(trainingSetNames);
             if(saveNeural)
                 neuralNetwork.storeGenome();
