@@ -12,8 +12,8 @@ public class MirrorCsv {
     static List<String>  lines = null;
     public static void main(String[] args) {
 
-        generate_mirror(track.E_TRACK2);
-        //generate_mirror(track.CORKSCREW);
+        generate_mirror(track.A_SPEEDWAY);
+
     }
 
     private static String minusS(String s)
@@ -70,7 +70,7 @@ public class MirrorCsv {
                     else if(j==2||j==4||j==5)
                         s +=","+ minusS(acts[j]);//steering,track position, angle to track axis
                     else if(j>5)
-                        s +=","+acts[24-j];//sensor track edge 0...18
+                        s +=","+acts[30-j];//sensor track edge 0...18
                 }
                 pw.println(s);
 

@@ -17,7 +17,7 @@ import java.util.List;
 
 public class DefaultDriver extends AbstractDriver {
 
-    private TRACK_NAME track_name;
+    private TRACK_NAME trackName;
     // test
     private NeuralNetwork neuralNetwork;
 
@@ -54,15 +54,19 @@ public class DefaultDriver extends AbstractDriver {
     private double[] previous_outputs={0.0D,0.0D,0.0D};
 
     // change this value to determine how many hidden layers and the size of it
-    private int[] layersConfig = {30,30,30};
-    //private int[] layersConfig = {25,25,25,25,25,25};
+    private int[] layersConfig = {50, 50, 25, 25};
+
+
     public DefaultDriver() {
         initialize();
         if(trainNeural)
         {
             neuralNetwork = new NeuralNetwork(25, layersConfig, 3);
-            //String[] trainingSetNames = {track_name.A_SPEEDWAY,track_name.A_SPEEDWAY_M,track_name.CORKSCREW,track_name.CORKSCREW_M,track_name.E_TRACK2,track_name.E_TRACK2_M};
-            String[] trainingSetNames = {track_name.A_SPEEDWAY};
+            //String[] trainingSetNames = {trackName.A_SPEEDWAY,trackName.CORKSCREW,trackName.E_TRACK2};
+            String[] trainingSetNames = {trackName.A_SPEEDWAY,trackName.A_SPEEDWAY_M};
+            //String[] trainingSetNames = {"train_data/f-speedway.csv","train_data/aalborg.csv","train_data/alpine-1.csv"};
+            //neuralNetwork.Train(trainingSetNames);
+            //,"Corkscrew_01_26_01.csv","Michigan_41_65.csv","GC_track2_59_74.csv"
             neuralNetwork.Train(trainingSetNames);
             if(saveNeural)
                 neuralNetwork.storeGenome();
@@ -83,7 +87,7 @@ public class DefaultDriver extends AbstractDriver {
                         "TRACK_EDGE_3,TRACK_EDGE_4,TRACK_EDGE_5,TRACK_EDGE_6,TRACK_EDGE_7,TRACK_EDGE_8,TRACK_EDGE_9,TRACK_EDGE_10," +
                         "TRACK_EDGE_11,TRACK_EDGE_12,TRACK_EDGE_13,TRACK_EDGE_14,TRACK_EDGE_15,TRACK_EDGE_16,TRACK_EDGE_17,TRACK_EDGE_18");
             } else if(simulate && !testNeural) {
-                reader = new BufferedReader(new FileReader(track_name.A_SPEEDWAY+".csv"));
+                reader = new BufferedReader(new FileReader(trackName.A_SPEEDWAY_M+".csv"));
                 lines = new ArrayList<String>();
                 String line = null;
                 while ((line = reader.readLine()) != null) {

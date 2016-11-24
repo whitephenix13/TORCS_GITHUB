@@ -1,5 +1,8 @@
 import org.encog.Encog;
+import org.encog.engine.network.activation.ActivationElliott;
+import org.encog.engine.network.activation.ActivationLinear;
 import org.encog.engine.network.activation.ActivationSigmoid;
+import org.encog.engine.network.activation.ActivationTANH;
 import org.encog.ml.data.MLData;
 import org.encog.ml.data.MLDataPair;
 import org.encog.neural.data.NeuralDataSet;
@@ -30,7 +33,7 @@ public class NeuralNetwork implements Serializable {
     int inputs;
     int[] layerConfig;
     int outputs;
-    int numberLoop = 50000;
+    int numberLoop = 500;
     double tolerance= 0.0001;
 
     NeuralNetwork(int _inputs, int[] _layerConfig, int _outputs) {
@@ -92,11 +95,11 @@ public class NeuralNetwork implements Serializable {
 
         // setup the network
         network = new BasicNetwork();
-        network.addLayer(new BasicLayer(new ActivationSigmoid(), true, inputs));
+        network.addLayer(new BasicLayer(new ActivationLinear(), true, inputs));
         for (int i = 0; i < layerConfig.length; i ++) {
-            network.addLayer(new BasicLayer(new ActivationSigmoid(), true, layerConfig[i]));
+            network.addLayer(new BasicLayer(new ActivationTANH(), true, layerConfig[i]));
         }
-        network.addLayer(new BasicLayer(new ActivationSigmoid(), true, outputs));
+        network.addLayer(new BasicLayer(new ActivationTANH(), true, outputs));
         network.getStructure().finalizeStructure();
         network.reset();
 
@@ -130,6 +133,45 @@ public class NeuralNetwork implements Serializable {
         Encog.getInstance().shutdown();
     }
 
+    public double[] predict_mirror(SensorModel sensors,double[] previousOutputs)
+    {
+        //previousOutputs correspond to previous accelerate, brake, steering
+        double TORCS_INPUT[][] = new double[1][25];
+        double TORCS_IDEAL[][] = new double[1][3];
+
+        // prepare the input
+        TORCS_INPUT[0][0] = previousOutputs[0];
+        TORCS_INPUT[0][1] = previousOutputs[1];
+        TORCS_INPUT[0][2] = -1*previousOutputs[2];//steering
+        TORCS_INPUT[0][3] = sensors.getSpeed();
+        TORCS_INPUT[0][4] = -1*sensors.getTrackPosition();
+        TORCS_INPUT[0][5] = -1*sensors.getAngleToTrackAxis();
+        double[] track_edge_sensors= sensors.getTrackEdgeSensors();
+        for(int j = 0; j < track_edge_sensors.length; j ++) {
+            TORCS_INPUT[0][j+6] = track_edge_sensors[18-j];
+        }
+
+        //prepare the output: unused value
+        TORCS_IDEAL[0][0] = 0;
+        TORCS_IDEAL[0][1] = 0;
+        TORCS_IDEAL[0][2] = 0;
+
+        // Data storage class in order to used them in .compute() function
+        NeuralDataSet neuralData = new BasicNeuralDataSet(TORCS_INPUT, TORCS_IDEAL);
+
+        MLData MLoutputs = null;
+        for (MLDataPair neuralDataSet : neuralData) {
+            MLoutputs = network.compute(neuralDataSet.getInput());
+            //System.out.println("predicted=" + output.getData(0) + " " + output.getData(1) + " " + output.getData(2));
+        }
+        double[] outputs = new double[3];
+        for(int i = 0; i<3; ++i)
+        {
+            outputs[i]= MLoutputs.getData(i);
+            previousOutputs[i]=outputs[i];//This SHOULD modify the array passed as parameter
+        }
+        return outputs;
+    }
     public double[] predict(SensorModel sensors,double[] previousOutputs)
     {
         //previousOutputs correspond to previous accelerate, brake, steering
