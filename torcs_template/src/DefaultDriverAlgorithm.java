@@ -14,7 +14,7 @@ public class DefaultDriverAlgorithm{
 
     DefaultDriverGenome[] drivers = new DefaultDriverGenome[1];
     int[] results = new int[1];
-
+    static int numberRun=10;
     public Class<? extends Driver> getDriverClass() {
         return DefaultDriver.class;
     }
@@ -27,8 +27,8 @@ public class DefaultDriverAlgorithm{
 
             //Start a race
             DefaultRace race = new DefaultRace();
-            race.setTrack("aalborg", "road");
-            race.laps = 1;
+            race.setTrack("a-speedway", "road");
+            race.laps = 2;
 
             //for speedup set withGUI to false
             results = race.runRace(drivers, false);
@@ -68,7 +68,10 @@ public class DefaultDriverAlgorithm{
                 algorithm.run(false);
             }
         } else {
-            algorithm.run(false);
+
+            for(int i = 0 ; i<numberRun ; ++i)
+                 algorithm.run(false);
+
         }
     }
 

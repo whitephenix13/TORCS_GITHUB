@@ -5,16 +5,10 @@ import cicontest.torcs.controller.extras.AutomatedClutch;
 import cicontest.torcs.controller.extras.AutomatedGearbox;
 import cicontest.torcs.controller.extras.AutomatedRecovering;
 import cicontest.torcs.genome.IGenome;
-import org.encog.ml.data.MLData;
-import org.encog.ml.data.MLDataPair;
-import org.encog.neural.data.NeuralDataSet;
-import org.encog.neural.data.basic.BasicNeuralDataSet;
-import org.encog.neural.networks.BasicNetwork;
 import scr.Action;
 import scr.SensorModel;
 
 import javax.swing.*;
-import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.io.*;
@@ -23,6 +17,7 @@ import java.util.List;
 
 public class DefaultDriver extends AbstractDriver {
 
+    private TRACK_NAME trackName;
     // test
     private NeuralNetwork neuralNetwork;
 
@@ -50,7 +45,7 @@ public class DefaultDriver extends AbstractDriver {
     private int count;
 
     // change this value to choose whether to simulate or control the car
-    private boolean simulate = false;
+    private boolean simulate = true;
 
     // change this value to simulate test on trained neural net
     private boolean testNeural = false;
@@ -68,12 +63,25 @@ public class DefaultDriver extends AbstractDriver {
 //    private int iterations = 5;
 //    private double[] lapTimes = new double[99];
 
+
+
+    // change this value to determine how many hidden layers and the size of it
+    private int[] layersConfig = {50, 50, 25, 25};
+
+    //Use to know if this is the first time we enter the controller:
+    boolean raceStarted = false;
+    double startTime;
+
     public DefaultDriver() {
         initialize();
         if(trainNeural)
         {
-            neuralNetwork = new NeuralNetwork(25, 100, 3);
-            String[] trainingSetNames = {"A_Speedway_34_52.csv","Corkscrew_01_26_01.csv","Michigan_41_65.csv","GC_track2_59_74.csv"};
+            neuralNetwork = new NeuralNetwork(25, layersConfig, 3);
+            //String[] trainingSetNames = {trackName.A_SPEEDWAY,trackName.CORKSCREW,trackName.E_TRACK2};
+            String[] trainingSetNames = {trackName.A_SPEEDWAY, trackName.MICHIGAN, trackName.GC_TRACK2, trackName.FORZA,
+                    trackName.E_ROAD, trackName.STREET1, trackName.CORKSCREW, trackName.E_TRACK6, trackName.E_TRACK2};            //String[] trainingSetNames = {"train_data/f-speedway.csv","train_data/aalborg.csv","train_data/alpine-1.csv"};
+            //neuralNetwork.Train(trainingSetNames);
+            //,"Corkscrew_01_26_01.csv","Michigan_41_65.csv","GC_track2_59_74.csv"
             neuralNetwork.Train(trainingSetNames);
             if(saveNeural)
                 neuralNetwork.storeGenome();
@@ -89,12 +97,12 @@ public class DefaultDriver extends AbstractDriver {
 
         try {
             if(!simulate && !testNeural) {
-                pw = new PrintWriter(new File("test.csv"));
+                pw = new PrintWriter(new File("test"+".csv"));
                 pw.println("ACCELERATION,BRAKE,STEERING,SPEED,TRACK_POSITION,ANGLE_TO_TRACK_AXIS,TRACK_EDGE_0,TRACK_EDGE_1,TRACK_EDGE_2," +
                         "TRACK_EDGE_3,TRACK_EDGE_4,TRACK_EDGE_5,TRACK_EDGE_6,TRACK_EDGE_7,TRACK_EDGE_8,TRACK_EDGE_9,TRACK_EDGE_10," +
                         "TRACK_EDGE_11,TRACK_EDGE_12,TRACK_EDGE_13,TRACK_EDGE_14,TRACK_EDGE_15,TRACK_EDGE_16,TRACK_EDGE_17,TRACK_EDGE_18");
             } else if(simulate && !testNeural) {
-                reader = new BufferedReader(new FileReader("A_Speedway_34_52.csv"));
+                reader = new BufferedReader(new FileReader(trackName.A_SPEEDWAY+".csv"));
                 lines = new ArrayList<String>();
                 String line = null;
                 while ((line = reader.readLine()) != null) {
@@ -111,7 +119,7 @@ public class DefaultDriver extends AbstractDriver {
     private void initialize() {
         this.enableExtras(new AutomatedClutch());
         this.enableExtras(new AutomatedGearbox());
-        //this.enableExtras(new AutomatedRecovering());
+        this.enableExtras(new AutomatedRecovering());
         this.enableExtras(new ABS());
     }
 
@@ -185,7 +193,8 @@ public class DefaultDriver extends AbstractDriver {
         return defaultControl(action, sensors);
     }
 
-    // used to test trained network
+    // used to test trained
+    int i=0;
     public Action neuralControl(Action action, SensorModel sensors) {
         if (action == null) {
             action = new Action();
@@ -197,13 +206,28 @@ public class DefaultDriver extends AbstractDriver {
         action.brake = predicted_outputs[1];
         action.steering = predicted_outputs[2];
         System.out.println("predicted= Acc " + predicted_outputs[0] + " Brake " + predicted_outputs[1] + " Steering " + predicted_outputs[2]);
-
+        //if(i>25)
+            //action.restartRace=true;
+        i++;
         return action;
     }
 
     // used to simulate the data
     @Override
     public Action defaultControl(Action action, SensorModel sensors) {
+        if(!raceStarted)
+        {
+            raceStarted=true;
+            startTime=System.currentTimeMillis();
+        }
+        double time_elapsed=(System.currentTimeMillis()- startTime);
+        if(sensors.getLaps()==1 || time_elapsed>300000)//5 min = 5 * 60 * 1000 ms = 300 000
+        {
+            System.out.println("Track is finished in "+ NeuralNetwork.convertTime(time_elapsed,true));
+            raceStarted=false;
+            action.restartRace=true;
+        }
+
 
         count += 1;
         if (action == null) {
@@ -285,9 +309,9 @@ public class DefaultDriver extends AbstractDriver {
                 action.accelerate = 1.0D;
                 action.brake = 0.0D;
             }
-            if(edges[9] < 80 && sensors.getSpeed() > 70){
+            if(edges[9] < 70 && sensors.getSpeed() > 70){
                 action.accelerate = 0.0D;
-                action.brake = Math.log(-edges[9]);
+                action.brake = 7/(double)edges[9];
                 System.out.println(action.brake);
             }
         }
@@ -435,6 +459,7 @@ public class DefaultDriver extends AbstractDriver {
         for(int i=0; i<track_edge_sensors.length;++i) {
             s += "," + track_edge_sensors[i];
         }
+        System.out.println("s: "+ s);
         pw.println(s);
 
         return action;
