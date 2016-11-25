@@ -1,4 +1,5 @@
 import java.io.File;
+import java.util.ArrayList;
 
 import cicontest.algorithm.abstracts.AbstractAlgorithm;
 import cicontest.algorithm.abstracts.AbstractRace;
@@ -30,19 +31,17 @@ public class DefaultDriverAlgorithm{
             race.laps = 1;
 
             //for speedup set withGUI to false
-            results = race.runRace(drivers, true);
+            results = race.runRace(drivers, false);
 
             // Save genome/nn
-            DriversUtils.storeGenome(drivers[0]);
+//            DriversUtils.storeGenome(drivers[0]);
         }
         // create a checkpoint this allows you to continue this run later
-        DriversUtils.createCheckpoint(this);
+//        DriversUtils.createCheckpoint(this);
         //DriversUtils.clearCheckpoint();
     }
 
     public static void main(String[] args) {
-        GP gp = new GP();
-        gp.evolve();
         //Set path to torcs.properties
         TorcsConfiguration.getInstance().initialize(new File("torcs.properties"));
         /*
@@ -66,10 +65,10 @@ public class DefaultDriverAlgorithm{
             if (DriversUtils.hasCheckpoint()) {
                 DriversUtils.loadCheckpoint().run(true);
             } else {
-                algorithm.run();
+                algorithm.run(false);
             }
         } else {
-            algorithm.run();
+            algorithm.run(false);
         }
     }
 

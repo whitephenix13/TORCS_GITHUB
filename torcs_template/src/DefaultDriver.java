@@ -53,10 +53,20 @@ public class DefaultDriver extends AbstractDriver {
     private boolean simulate = false;
 
     // change this value to simulate test on trained neural net
-    private boolean testNeural = true;
-    private boolean trainNeural = true;
-    private boolean saveNeural =true;
+    private boolean testNeural = false;
+    private boolean trainNeural = false;
+    private boolean saveNeural = false;
+    private boolean furthestSensor = true;
     private double[] previous_outputs={0.0D,0.0D,0.0D};
+
+    // for GP
+//    private boolean GPtest = true;
+//    private int speciesCounter = 0;
+//    GP gp = new GP();
+//    private ArrayList<ArrayList<String>> population = gp.evolve();
+//    private int current_iter = 0;
+//    private int iterations = 5;
+//    private double[] lapTimes = new double[99];
 
     public DefaultDriver() {
         initialize();
@@ -135,8 +145,14 @@ public class DefaultDriver extends AbstractDriver {
     @Override
     public Action controlWarmUp(SensorModel sensors) {
         Action action = new Action();
+//        if(GPtest){
+//            return GPControl(action, sensors);
+//        }
         if(testNeural) {
             return neuralControl(action, sensors);
+        }
+        else if(furthestSensor) {
+            return furthestSensorControl(action, sensors);
         } else if(!simulate) {
             return keyboardControl(action, sensors);
         }
@@ -148,7 +164,9 @@ public class DefaultDriver extends AbstractDriver {
         Action action = new Action();
         if(testNeural) {
             return neuralControl(action, sensors);
-        } else if(!simulate) {
+        } else if(furthestSensor) {
+            return furthestSensorControl(action, sensors);
+        }else if(!simulate) {
             return keyboardControl(action, sensors);
         }
         return defaultControl(action, sensors);
@@ -159,6 +177,8 @@ public class DefaultDriver extends AbstractDriver {
         Action action = new Action();
         if(testNeural) {
             return neuralControl(action, sensors);
+        } else if(furthestSensor) {
+            return furthestSensorControl(action, sensors);
         } else if(!simulate) {
             return keyboardControl(action, sensors);
         }
@@ -170,7 +190,9 @@ public class DefaultDriver extends AbstractDriver {
         if (action == null) {
             action = new Action();
         }
+
         double[] predicted_outputs = neuralNetwork.predict(sensors,previous_outputs);
+
         action.accelerate = predicted_outputs[0];
         action.brake = predicted_outputs[1];
         action.steering = predicted_outputs[2];
@@ -182,6 +204,7 @@ public class DefaultDriver extends AbstractDriver {
     // used to simulate the data
     @Override
     public Action defaultControl(Action action, SensorModel sensors) {
+
         count += 1;
         if (action == null) {
             action = new Action();
@@ -219,6 +242,138 @@ public class DefaultDriver extends AbstractDriver {
 
         return action;
     }
+
+    // used to simulate the data
+    public Action furthestSensorControl(Action action, SensorModel sensors) {
+
+        if (action == null) {
+            action = new Action();
+        }
+
+        if(true){
+            double furthest = 0;
+            int edgesIndex = 0;
+            double[] edges = sensors.getTrackEdgeSensors();
+            for(int i =0;i<edges.length; i++){
+                if(edges[i] > furthest){
+                    furthest = edges[i];
+                    edgesIndex = i;
+                }
+            }
+//            System.out.println(edgesIndex);
+            action.steering = ((90.0 - (double)edgesIndex * 10.0)/180) * 3.14;
+//            System.out.println(action.steering);
+//            action.steering = DriversUtils.alignToTrackAxis(sensors, 0.5);
+
+
+            if (sensors.getSpeed() > 60.0D) {
+                action.accelerate = 0.0D;
+                action.brake = 0.0D;
+            }
+
+            if (sensors.getSpeed() > 70.0D) {
+                action.accelerate = 0.0D;
+                action.brake = -1.0D;
+            }
+
+            if (sensors.getSpeed() <= 50.0D) {
+                action.accelerate = (80.0D - sensors.getSpeed()) / 80.0D;
+                action.brake = 0.0D;
+            }
+
+            if (sensors.getSpeed() < 400.0D) {
+                action.accelerate = 1.0D;
+                action.brake = 0.0D;
+            }
+            if(edges[9] < 80 && sensors.getSpeed() > 70){
+                action.accelerate = 0.0D;
+                action.brake = Math.log(-edges[9]);
+                System.out.println(action.brake);
+            }
+        }
+
+        return action;
+    }
+
+//    // used to simulate the data
+//    public Action GPControl(Action action, SensorModel sensors) {
+//
+//        if(sensors.getLaps() > 0){
+//            lapTimes[speciesCounter] = sensors.getBestLapTime();
+//            if(speciesCounter < population.size()-1) {
+//                action.restartRace = true;
+//                speciesCounter++;
+//            }
+//            else if(current_iter < iterations){
+//                population = gp.nextGeneration(population, lapTimes);
+//            }
+//            else{
+////
+//            }
+//        }
+//
+//        count += 1;
+//        if (action == null) {
+//            action = new Action();
+//        }
+//
+//        if(lines.size() <= count){
+//            action.steering = DriversUtils.alignToTrackAxis(sensors, 0.5);
+//            if (sensors.getSpeed() > 60.0D) {
+//                action.accelerate = 0.0D;
+//                action.brake = 0.0D;
+//            }
+//
+//            if (sensors.getSpeed() > 70.0D) {
+//                action.accelerate = 0.0D;
+//                action.brake = -1.0D;
+//            }
+//
+//            if (sensors.getSpeed() <= 60.0D) {
+//                action.accelerate = (80.0D - sensors.getSpeed()) / 80.0D;
+//                action.brake = 0.0D;
+//            }
+//
+//            if (sensors.getSpeed() < 30.0D) {
+//                action.accelerate = 1.0D;
+//                action.brake = 0.0D;
+//            }
+//        } else {
+//            String act = lines.get(count);
+//            String[] acts = act.split(",");
+//
+//            action.steering = Double.parseDouble(acts[2]);
+//            action.brake = Double.parseDouble(acts[1]);
+//            action.accelerate = Double.parseDouble(acts[0]);
+//        }
+//
+//        return action;
+//    }
+//
+//    public void setupGP(){
+
+
+
+
+//        int[] times = new int[population.size()];
+
+//        for(int i=0; i<5; i++){
+            // test the whole population
+//            for(int k=0; k<population.size();k++){
+                // test single species
+//            }
+//            // print best time
+//            int smallest = times[0];
+//            for(int j=1; j< times.length; j++){
+//                if(times[j] < smallest){
+//                    smallest = times[j];
+//                }
+//            }
+//
+//            // send the 20 best species to:
+//            population = gp.nextGeneration(population);
+//        }
+//    }
 
     // used to get human data
     public Action keyboardControl(Action action, SensorModel sensors) {
