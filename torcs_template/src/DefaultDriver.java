@@ -19,7 +19,8 @@ public class DefaultDriver extends AbstractDriver {
 
     private TRACK_NAME trackName;
     // test
-    private NeuralNetwork neuralNetwork;
+    private NeuralNetwork nnAI;
+    private NeuralNetwork nnHuman;
 
     // arrows pressed and released
     private boolean upPressed = false;
@@ -45,14 +46,19 @@ public class DefaultDriver extends AbstractDriver {
     private int count;
 
     // change this value to choose whether to simulate or control the car
-    private boolean simulate = true;
-
+    private boolean simulate = false;
+    // change this value to rule based
+    private boolean furthestSensor = false;
     // change this value to simulate test on trained neural net
     private boolean testNeural = false;
-    private boolean trainNeural = false;
-    private boolean saveNeural = false;
-    private boolean furthestSensor = true;
+    private boolean trainNeural = true;
+    private boolean saveNeural = true;
+
     private double[] previous_outputs={0.0D,0.0D,0.0D};
+    private boolean complexNeural = true;
+    private double ruleBasedWeight = 0.7;
+    private double nnAIWeight = 0.2;
+    private double nnHumanWeight = 0.1;
 
     // for GP
 //    private boolean GPtest = true;
@@ -76,32 +82,38 @@ public class DefaultDriver extends AbstractDriver {
         initialize();
         if(trainNeural)
         {
-            neuralNetwork = new NeuralNetwork(25, layersConfig, 3);
+            nnAI = new NeuralNetwork(25, layersConfig, 3);
             //String[] trainingSetNames = {trackName.A_SPEEDWAY,trackName.CORKSCREW,trackName.E_TRACK2};
-            String[] trainingSetNames = {trackName.A_SPEEDWAY, trackName.MICHIGAN, trackName.GC_TRACK2, trackName.FORZA,
-                    trackName.E_ROAD, trackName.STREET1, trackName.CORKSCREW, trackName.E_TRACK6, trackName.E_TRACK2};            //String[] trainingSetNames = {"train_data/f-speedway.csv","train_data/aalborg.csv","train_data/alpine-1.csv"};
+            String[] trainingHuman = {trackName.STREET1, trackName.CORKSCREW, trackName.E_TRACK6, trackName.E_TRACK2};            //String[] trainingSetNames = {"train_data/f-speedway.csv","train_data/aalborg.csv","train_data/alpine-1.csv"};
             //neuralNetwork.Train(trainingSetNames);
             //,"Corkscrew_01_26_01.csv","Michigan_41_65.csv","GC_track2_59_74.csv"
-            neuralNetwork.Train(trainingSetNames);
-            if(saveNeural)
-                neuralNetwork.storeGenome();
+            String[] trainingAI = {trackName.F_SPEEDWAY, trackName.AALBORG, trackName.ALPINE1};
+            //String[] trainingSetNames2 = {trackName.A_SPEEDWAY, trackName.MICHIGAN, trackName.GC_TRACK2, trackName.FORZA,
+            //trackName.E_ROAD, trackName.STREET1, trackName.CORKSCREW, trackName.E_TRACK6, trackName.E_TRACK2};
+            nnAI.Train(trainingAI);
+            nnHuman.Train(trainingHuman);
+            if(saveNeural) {
+                nnAI.storeGenome("nnAI");
+                nnHuman.storeGenome("nnHuman");
+            }
         }
         else
         {
-            neuralNetwork=new NeuralNetwork(true);
+            nnAI = new NeuralNetwork(true, "nnAI");
+            nnHuman = new NeuralNetwork(true, "nnHuman");
         }
-        if(!simulate && !testNeural) {
+        if(!simulate && !testNeural && !furthestSensor && !complexNeural) {
             focusFrame = new FocusFrame();
             focusFrame.requestFocus();
         }
 
         try {
-            if(!simulate && !testNeural) {
+            if(!simulate && !testNeural && !furthestSensor && !complexNeural) {
                 pw = new PrintWriter(new File("test"+".csv"));
                 pw.println("ACCELERATION,BRAKE,STEERING,SPEED,TRACK_POSITION,ANGLE_TO_TRACK_AXIS,TRACK_EDGE_0,TRACK_EDGE_1,TRACK_EDGE_2," +
                         "TRACK_EDGE_3,TRACK_EDGE_4,TRACK_EDGE_5,TRACK_EDGE_6,TRACK_EDGE_7,TRACK_EDGE_8,TRACK_EDGE_9,TRACK_EDGE_10," +
                         "TRACK_EDGE_11,TRACK_EDGE_12,TRACK_EDGE_13,TRACK_EDGE_14,TRACK_EDGE_15,TRACK_EDGE_16,TRACK_EDGE_17,TRACK_EDGE_18");
-            } else if(simulate && !testNeural) {
+            } else if(simulate && !testNeural && !furthestSensor && !complexNeural) {
                 reader = new BufferedReader(new FileReader(trackName.A_SPEEDWAY+".csv"));
                 lines = new ArrayList<String>();
                 String line = null;
@@ -135,13 +147,13 @@ public class DefaultDriver extends AbstractDriver {
     @Override
     public double getAcceleration(SensorModel sensors) {
         double[] sensorArray = new double[4];
-        double output = neuralNetwork.getOutput(sensors);
+        double output = nnAI.getOutput(sensors);
         return 1;
     }
 
     @Override
     public double getSteering(SensorModel sensors) {
-        Double output = neuralNetwork.getOutput(sensors);
+        Double output = nnAI.getOutput(sensors);
         return 0.5;
     }
 
@@ -156,7 +168,11 @@ public class DefaultDriver extends AbstractDriver {
 //        if(GPtest){
 //            return GPControl(action, sensors);
 //        }
-        if(testNeural) {
+
+        if(complexNeural) {
+            return complexControl(action, sensors);
+        }
+        else if(testNeural) {
             return neuralControl(action, sensors);
         }
         else if(furthestSensor) {
@@ -170,7 +186,10 @@ public class DefaultDriver extends AbstractDriver {
     @Override
     public Action controlQualification(SensorModel sensors) {
         Action action = new Action();
-        if(testNeural) {
+        if(complexNeural) {
+            return complexControl(action, sensors);
+        }
+        else if(testNeural) {
             return neuralControl(action, sensors);
         } else if(furthestSensor) {
             return furthestSensorControl(action, sensors);
@@ -183,7 +202,10 @@ public class DefaultDriver extends AbstractDriver {
     @Override
     public Action controlRace(SensorModel sensors) {
         Action action = new Action();
-        if(testNeural) {
+        if(complexNeural) {
+            return complexControl(action, sensors);
+        }
+        else if(testNeural) {
             return neuralControl(action, sensors);
         } else if(furthestSensor) {
             return furthestSensorControl(action, sensors);
@@ -194,24 +216,32 @@ public class DefaultDriver extends AbstractDriver {
     }
 
     // used to test trained
-    int i=0;
     public Action neuralControl(Action action, SensorModel sensors) {
         if (action == null) {
             action = new Action();
         }
+        Action neural = specificNeuralControl(action, sensors, nnAI);
+        return neural;
+    }
 
-        double[] predicted_outputs = neuralNetwork.predict(sensors,previous_outputs);
+    public Action specificNeuralControl(Action action, SensorModel sensors, NeuralNetwork net) {
+        if (action == null) {
+            action = new Action();
+        }
+
+        double[] predicted_outputs = net.predict(sensors,previous_outputs);
+
+        if (sensors.isFinished()) {
+            action.restartRace = true;
+        }
 
         action.accelerate = predicted_outputs[0];
         action.brake = predicted_outputs[1];
         action.steering = predicted_outputs[2];
         System.out.println("predicted= Acc " + predicted_outputs[0] + " Brake " + predicted_outputs[1] + " Steering " + predicted_outputs[2]);
-        //if(i>25)
-            //action.restartRace=true;
-        i++;
+
         return action;
     }
-
     // used to simulate the data
     @Override
     public Action defaultControl(Action action, SensorModel sensors) {
@@ -234,14 +264,14 @@ public class DefaultDriver extends AbstractDriver {
             action = new Action();
         }
 
-        if(lines.size() <= count){
+        //if(lines.size() <= count){
             action.steering = DriversUtils.alignToTrackAxis(sensors, 0.5);
             if (sensors.getSpeed() > 60.0D) {
-                action.accelerate = 0.0D;
+                action.accelerate = 1.0D;
                 action.brake = 0.0D;
             }
 
-            if (sensors.getSpeed() > 70.0D) {
+            if (sensors.getSpeed() > 160.0D) {
                 action.accelerate = 0.0D;
                 action.brake = -1.0D;
             }
@@ -255,7 +285,7 @@ public class DefaultDriver extends AbstractDriver {
                 action.accelerate = 1.0D;
                 action.brake = 0.0D;
             }
-        } else {
+        /*} else {
             String act = lines.get(count);
             String[] acts = act.split(",");
 
@@ -263,7 +293,7 @@ public class DefaultDriver extends AbstractDriver {
             action.brake = Double.parseDouble(acts[1]);
             action.accelerate = Double.parseDouble(acts[0]);
         }
-
+*/
         return action;
     }
 
@@ -324,6 +354,20 @@ public class DefaultDriver extends AbstractDriver {
 //            }
         }
 
+        return action;
+    }
+
+    public Action complexControl(Action action, SensorModel sensors) {
+        Action ruleBaseAction = furthestSensorControl(action, sensors);
+        Action aiNeuralControl = specificNeuralControl(action, sensors, nnAI);
+        Action humanNeuralControl = specificNeuralControl(action, sensors, nnHuman);
+
+        action.steering = ruleBasedWeight * ruleBaseAction.steering + nnAIWeight * aiNeuralControl.steering
+                + nnHumanWeight * humanNeuralControl.steering;
+        action.brake = ruleBasedWeight * ruleBaseAction.brake + nnAIWeight * aiNeuralControl.brake
+                + nnHumanWeight * humanNeuralControl.brake;
+        action.accelerate = ruleBasedWeight * ruleBaseAction.accelerate + nnAIWeight * aiNeuralControl.accelerate
+                + nnHumanWeight * humanNeuralControl.accelerate;
         return action;
     }
 
