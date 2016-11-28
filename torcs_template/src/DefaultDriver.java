@@ -284,10 +284,11 @@ public class DefaultDriver extends AbstractDriver {
                     edgesIndex = i;
                 }
             }
-//            System.out.println(edgesIndex);
             action.steering = ((90.0 - (double)edgesIndex * 10.0)/180) * 3.14;
 //            System.out.println(action.steering);
 //            action.steering = DriversUtils.alignToTrackAxis(sensors, 0.5);
+
+//            double[] opponents = sensors.getOpponentSensors();
 
 
             if (sensors.getSpeed() > 60.0D) {
@@ -309,11 +310,18 @@ public class DefaultDriver extends AbstractDriver {
                 action.accelerate = 1.0D;
                 action.brake = 0.0D;
             }
-            if(edges[9] < 70 && sensors.getSpeed() > 70){
+
+            if(edges[9] < 0.5*sensors.getSpeed() && sensors.getSpeed() > 40){
                 action.accelerate = 0.0D;
-                action.brake = 7/(double)edges[9];
-                System.out.println(action.brake);
+                action.brake = (20.0D)/((double)edges[9]);
+//                System.out.println(action.brake);
             }
+//            if(furthest < 2){
+//                System.out.println("back");
+//                action.gear = 0;
+//                action.brake = -1.0;
+//                action.accelerate = 0.0;
+//            }
         }
 
         return action;
