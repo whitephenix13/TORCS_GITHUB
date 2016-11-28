@@ -49,12 +49,12 @@ public class DefaultDriver extends AbstractDriver {
 
     // change this value to simulate test on trained neural net
     private boolean testNeural = true;
-    private boolean trainNeural = false;
-    private boolean saveNeural = false;
+    private boolean trainNeural = true;
+    private boolean saveNeural = true;
     private double[] previous_outputs={0.0D,0.0D,0.0D};
 
     // change this value to determine how many hidden layers and the size of it
-    private int[] layersConfig = {25, 25, 25, 25, 25};
+    private int[] layersConfig = {50, 50, 50, 50};
 
     public DefaultDriver() {
         initialize();
@@ -64,7 +64,9 @@ public class DefaultDriver extends AbstractDriver {
             //String[] trainingSetNames = {"train_data/f-speedway.csv","train_data/aalborg.csv","train_data/alpine-1.csv"};
             //neuralNetwork.Train(trainingSetNames);
             //,"Corkscrew_01_26_01.csv","Michigan_41_65.csv","GC_track2_59_74.csv"
-            String[] trainingSetNames = {trackName.F_SPEEDWAY, trackName.F_SPEEDWAY_M};
+            String[] trainingSetNames = {trackName.F_SPEEDWAY, trackName.AALBORG, trackName.ALPINE1};
+            //String[] trainingSetNames2 = {trackName.A_SPEEDWAY, trackName.MICHIGAN, trackName.GC_TRACK2, trackName.FORZA,
+            //trackName.E_ROAD, trackName.STREET1, trackName.CORKSCREW, trackName.E_TRACK6, trackName.E_TRACK2};
             neuralNetwork.Train(trainingSetNames);
             if(saveNeural)
                 neuralNetwork.storeGenome();
@@ -172,6 +174,11 @@ public class DefaultDriver extends AbstractDriver {
             action = new Action();
         }
         double[] predicted_outputs = neuralNetwork.predict(sensors,previous_outputs);
+
+        if (sensors.isFinished()) {
+            action.restartRace = true;
+        }
+
         action.accelerate = predicted_outputs[0];
         action.brake = predicted_outputs[1];
         action.steering = predicted_outputs[2];
@@ -188,14 +195,14 @@ public class DefaultDriver extends AbstractDriver {
             action = new Action();
         }
 
-        if(lines.size() <= count){
+        //if(lines.size() <= count){
             action.steering = DriversUtils.alignToTrackAxis(sensors, 0.5);
             if (sensors.getSpeed() > 60.0D) {
-                action.accelerate = 0.0D;
+                action.accelerate = 1.0D;
                 action.brake = 0.0D;
             }
 
-            if (sensors.getSpeed() > 70.0D) {
+            if (sensors.getSpeed() > 160.0D) {
                 action.accelerate = 0.0D;
                 action.brake = -1.0D;
             }
@@ -209,7 +216,7 @@ public class DefaultDriver extends AbstractDriver {
                 action.accelerate = 1.0D;
                 action.brake = 0.0D;
             }
-        } else {
+        /*} else {
             String act = lines.get(count);
             String[] acts = act.split(",");
 
@@ -217,7 +224,7 @@ public class DefaultDriver extends AbstractDriver {
             action.brake = Double.parseDouble(acts[1]);
             action.accelerate = Double.parseDouble(acts[0]);
         }
-
+*/
         return action;
     }
 

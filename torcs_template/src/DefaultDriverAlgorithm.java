@@ -30,13 +30,13 @@ public class DefaultDriverAlgorithm extends AbstractAlgorithm {
             race.laps = 1;
 
             //for speedup set withGUI to false
-            results = race.runRace(drivers, true);
+            results = race.runRace(drivers, false);
 
             // Save genome/nn
-            DriversUtils.storeGenome(drivers[0]);
+            //DriversUtils.storeGenome(drivers[0]);
         }
         // create a checkpoint this allows you to continue this run later
-        DriversUtils.createCheckpoint(this);
+        //DriversUtils.createCheckpoint(this);
         //DriversUtils.clearCheckpoint();
     }
 
@@ -55,20 +55,22 @@ public class DefaultDriverAlgorithm extends AbstractAlgorithm {
 		 */
         DefaultDriverAlgorithm algorithm = new DefaultDriverAlgorithm();
         DriversUtils.registerMemory(algorithm.getDriverClass());
-        if (args.length > 0 && args[0].equals("-show")) {
-            new DefaultRace().showBest();
-        } else if (args.length > 0 && args[0].equals("-show-race")) {
-            new DefaultRace().showBestRace();
-        } else if (args.length > 0 && args[0].equals("-human")) {
-            new DefaultRace().raceBest();
-        } else if (args.length > 0 && args[0].equals("-continue")) {
-            if (DriversUtils.hasCheckpoint()) {
-                DriversUtils.loadCheckpoint().run(true);
+        for (int i = 0; i < 1; i ++) {
+            if (args.length > 0 && args[0].equals("-show")) {
+                new DefaultRace().showBest();
+            } else if (args.length > 0 && args[0].equals("-show-race")) {
+                new DefaultRace().showBestRace();
+            } else if (args.length > 0 && args[0].equals("-human")) {
+                new DefaultRace().raceBest();
+            } else if (args.length > 0 && args[0].equals("-continue")) {
+                if (DriversUtils.hasCheckpoint()) {
+                    DriversUtils.loadCheckpoint().run(true);
+                } else {
+                    algorithm.run();
+                }
             } else {
                 algorithm.run();
             }
-        } else {
-            algorithm.run();
         }
     }
 
