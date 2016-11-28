@@ -1,4 +1,5 @@
 import java.io.File;
+import java.util.ArrayList;
 
 import cicontest.algorithm.abstracts.AbstractAlgorithm;
 import cicontest.algorithm.abstracts.AbstractRace;
@@ -7,13 +8,13 @@ import cicontest.torcs.controller.Driver;
 import cicontest.torcs.controller.Human;
 import race.TorcsConfiguration;
 
-public class DefaultDriverAlgorithm extends AbstractAlgorithm {
+public class DefaultDriverAlgorithm{
 
     private static final long serialVersionUID = 654963126362653L;
 
     DefaultDriverGenome[] drivers = new DefaultDriverGenome[1];
     int[] results = new int[1];
-
+    static int numberRun=10;
     public Class<? extends Driver> getDriverClass() {
         return DefaultDriver.class;
     }
@@ -26,8 +27,8 @@ public class DefaultDriverAlgorithm extends AbstractAlgorithm {
 
             //Start a race
             DefaultRace race = new DefaultRace();
-            race.setTrack("aalborg", "road");
-            race.laps = 1;
+            race.setTrack("a-speedway", "road");
+            race.laps = 2;
 
             //for speedup set withGUI to false
             results = race.runRace(drivers, false);
@@ -41,7 +42,6 @@ public class DefaultDriverAlgorithm extends AbstractAlgorithm {
     }
 
     public static void main(String[] args) {
-
         //Set path to torcs.properties
         TorcsConfiguration.getInstance().initialize(new File("torcs.properties"));
         /*
@@ -66,10 +66,10 @@ public class DefaultDriverAlgorithm extends AbstractAlgorithm {
                 if (DriversUtils.hasCheckpoint()) {
                     DriversUtils.loadCheckpoint().run(true);
                 } else {
-                    algorithm.run();
+                    algorithm.run(false);
                 }
             } else {
-                algorithm.run();
+                algorithm.run(false);
             }
         }
     }

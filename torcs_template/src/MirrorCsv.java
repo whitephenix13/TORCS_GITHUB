@@ -8,10 +8,12 @@ import java.util.List;
 public class MirrorCsv {
     private static PrintWriter pw;
     private static BufferedReader reader;
-
+    static TRACK_NAME track;
     static List<String>  lines = null;
     public static void main(String[] args) {
-        generate_mirror("train_data/f-speedway");
+
+        generate_mirror(track.A_SPEEDWAY);
+
     }
 
     private static String minusS(String s)
@@ -56,8 +58,11 @@ public class MirrorCsv {
                 String[] acts = act.split(",");
 
                 String s = "";
-                for(int j=0; j<acts.length; ++j)
+                int maxLength= (acts.length>25?25:acts.length);
+                for(int j=0; j<maxLength; ++j)
                 {
+                    if(maxLength<25)
+                        break;
                     if(j==0)
                         s +=acts[j]; //accelerate
                     else if(j==1||j==3)
@@ -65,7 +70,7 @@ public class MirrorCsv {
                     else if(j==2||j==4||j==5)
                         s +=","+ minusS(acts[j]);//steering,track position, angle to track axis
                     else if(j>5)
-                        s +=","+acts[24-j];//sensor track edge 0...18
+                        s +=","+acts[30-j];//sensor track edge 0...18
                 }
                 pw.println(s);
 
