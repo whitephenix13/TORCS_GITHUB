@@ -43,6 +43,7 @@ public class DefaultDriver extends AbstractDriver {
     FocusFrame focusFrame;
 
     private PrintWriter pw;
+    private static PrintWriter pw2;
     private BufferedReader reader;
 
     List<String> lines = null;
@@ -52,7 +53,7 @@ public class DefaultDriver extends AbstractDriver {
     private boolean simulate = false;
 
     // change this value to rule based
-    private boolean furthestSensor = true;
+    private boolean furthestSensor = false;
     // change this value to simulate test on trained neural net
     private boolean testNeural = false;
     private boolean trainNeural = false;
@@ -60,15 +61,17 @@ public class DefaultDriver extends AbstractDriver {
 
     private double[] previous_outputs={0.0D,0.0D,0.0D};
 
-    private boolean complexNeural = false;
-    private boolean crossvalidateWeight =false;
+    private boolean complexNeural = true;
+    private boolean crossvalidateWeight =true;
     private static int numLoop = 0;
     private boolean first_cross = true;
+    private boolean waitRestart =false;
     private double step = 0.1;
+    private static int maxLoop = 0;
     //The weights are overide when crossvalidateWeight is true
-    private double ruleBasedWeight = 1.0;
+    private double ruleBasedWeight = 0.0;
     private double nnAIWeight = 0.0;
-    private double nnHumanWeight = 0.0;
+    private double nnHumanWeight = 1.0;
 
     // for GP
 //    private boolean GPtest = true;
@@ -91,53 +94,61 @@ public class DefaultDriver extends AbstractDriver {
     public DefaultDriver() {
         initialize();
 
-//        if(trainNeural)
-//        {
-//            nnAI = new NeuralNetwork(25, layersConfig, 3);
-//            nnHuman = new NeuralNetwork(25, layersConfig, 3);
-//            String[] trainingHuman = {trackName.STREET1, trackName.CORKSCREW, trackName.E_TRACK6, trackName.E_TRACK2};            //String[] trainingSetNames = {"train_data/f-speedway.csv","train_data/aalborg.csv","train_data/alpine-1.csv"};
-//
-//            //neuralNetwork.Train(trainingSetNames);
-//            //,"Corkscrew_01_26_01.csv","Michigan_41_65.csv","GC_track2_59_74.csv"
-//            String[] trainingAI = {trackName.F_SPEEDWAY, trackName.AALBORG, trackName.ALPINE1};
-//            //String[] trainingSetNames2 = {trackName.A_SPEEDWAY, trackName.MICHIGAN, trackName.GC_TRACK2, trackName.FORZA,
-//            //trackName.E_ROAD, trackName.STREET1, trackName.CORKSCREW, trackName.E_TRACK6, trackName.E_TRACK2};
-//            nnAI.Train(trainingAI);
-//            nnHuman.Train(trainingHuman);
-//            if(saveNeural) {
-//                nnAI.storeGenome("nnAI");
-//                nnHuman.storeGenome("nnHuman");
-//            }
-//        }
-//        else
-//        {
-//            nnAI = new NeuralNetwork(true, "nnAI");
-//            nnHuman = new NeuralNetwork(true, "nnHuman");
-//        }
-//        if(!simulate && !testNeural && !furthestSensor && !complexNeural) {
-//            focusFrame = new FocusFrame();
-//            focusFrame.requestFocus();
-//        }
-//
-//        try {
-//            if(!simulate && !testNeural && !furthestSensor && !complexNeural) {
-//                pw = new PrintWriter(new File("test"+".csv"));
-//                pw.println("ACCELERATION,BRAKE,STEERING,SPEED,TRACK_POSITION,ANGLE_TO_TRACK_AXIS,TRACK_EDGE_0,TRACK_EDGE_1,TRACK_EDGE_2," +
-//                        "TRACK_EDGE_3,TRACK_EDGE_4,TRACK_EDGE_5,TRACK_EDGE_6,TRACK_EDGE_7,TRACK_EDGE_8,TRACK_EDGE_9,TRACK_EDGE_10," +
-//                        "TRACK_EDGE_11,TRACK_EDGE_12,TRACK_EDGE_13,TRACK_EDGE_14,TRACK_EDGE_15,TRACK_EDGE_16,TRACK_EDGE_17,TRACK_EDGE_18");
-//            } else if(simulate && !testNeural && !furthestSensor && !complexNeural) {
-//                reader = new BufferedReader(new FileReader(trackName.A_SPEEDWAY+".csv"));
-//                lines = new ArrayList<String>();
-//                String line = null;
-//                while ((line = reader.readLine()) != null) {
-//                    lines.add(line);
-//                }
-//            }
-//        } catch (FileNotFoundException e) {
-//            e.printStackTrace();
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
+        if(trainNeural)
+        {
+            nnAI = new NeuralNetwork(25, layersConfig, 3);
+            nnHuman = new NeuralNetwork(25, layersConfig, 3);
+            String[] trainingHuman = {trackName.STREET1, trackName.CORKSCREW, trackName.E_TRACK6, trackName.E_TRACK2};            //String[] trainingSetNames = {"train_data/f-speedway.csv","train_data/aalborg.csv","train_data/alpine-1.csv"};
+
+            //neuralNetwork.Train(trainingSetNames);
+            //,"Corkscrew_01_26_01.csv","Michigan_41_65.csv","GC_track2_59_74.csv"
+            String[] trainingAI = {trackName.F_SPEEDWAY, trackName.AALBORG, trackName.ALPINE1};
+            //String[] trainingSetNames2 = {trackName.A_SPEEDWAY, trackName.MICHIGAN, trackName.GC_TRACK2, trackName.FORZA,
+            //trackName.E_ROAD, trackName.STREET1, trackName.CORKSCREW, trackName.E_TRACK6, trackName.E_TRACK2};
+            nnAI.Train(trainingAI);
+            nnHuman.Train(trainingHuman);
+            if(saveNeural) {
+                nnAI.storeGenome("nnAI");
+                nnHuman.storeGenome("nnHuman");
+            }
+        }
+        else
+        {
+            nnAI = new NeuralNetwork(true, "nnAI");
+            nnHuman = new NeuralNetwork(true, "nnHuman");
+        }
+        if(!simulate && !testNeural && !furthestSensor && !complexNeural) {
+            focusFrame = new FocusFrame();
+            focusFrame.requestFocus();
+        }
+
+        try {
+            if(!simulate && !testNeural && !furthestSensor && !complexNeural) {
+                pw = new PrintWriter(new File("test"+".csv"));
+                pw.println("ACCELERATION,BRAKE,STEERING,SPEED,TRACK_POSITION,ANGLE_TO_TRACK_AXIS,TRACK_EDGE_0,TRACK_EDGE_1,TRACK_EDGE_2," +
+                        "TRACK_EDGE_3,TRACK_EDGE_4,TRACK_EDGE_5,TRACK_EDGE_6,TRACK_EDGE_7,TRACK_EDGE_8,TRACK_EDGE_9,TRACK_EDGE_10," +
+                        "TRACK_EDGE_11,TRACK_EDGE_12,TRACK_EDGE_13,TRACK_EDGE_14,TRACK_EDGE_15,TRACK_EDGE_16,TRACK_EDGE_17,TRACK_EDGE_18");
+            } else if(simulate && !testNeural && !furthestSensor && !complexNeural) {
+                reader = new BufferedReader(new FileReader(trackName.A_SPEEDWAY+".csv"));
+                lines = new ArrayList<String>();
+                String line = null;
+                while ((line = reader.readLine()) != null) {
+                    lines.add(line);
+                }
+            }
+            if (crossvalidateWeight)
+            {
+                if(pw2==null) {
+                    pw2 = new PrintWriter(new File("weights" + ".csv"));
+                    pw2.println("RULE_BASED,AI,HUMAN,TIME(s)");
+
+                }
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private void initialize() {
@@ -380,47 +391,90 @@ public class DefaultDriver extends AbstractDriver {
     }
 
     public Action complexControl(Action action, SensorModel sensors) {
+        String s="";
         if(crossvalidateWeight)
         {
-
-            if(sensors.getLaps()==1)
-            {
-                System.out.println("ruleBasedWeight : " + ruleBasedWeight + " nnAIWeight: "+ nnAIWeight +" nnHumanWeight: "+nnHumanWeight );
-            }
-
-           for (int i = 0; i< sensors.getTrackEdgeSensors().length; ++i)
-           {
-               if(sensors.getTrackEdgeSensors()[i]==-1)
-               {
-                   numLoop++;
-                   action.restartRace=true;
-
-                   break;
-               }
-           }
            if(first_cross) {
                first_cross=false;
-               int max_ind = (int) (1.0 / step + 1);
-               ruleBasedWeight = step * (numLoop % max_ind);
-               if (ruleBasedWeight == 1)
-                   nnAIWeight = 0;
-               else
-                   nnAIWeight = step * (numLoop / max_ind);
-               if (nnAIWeight == 1)
-                   ruleBasedWeight = 0;
+               boolean restart=false;
+               //update the weights
+               do {
+                   if(restart)
+                       numLoop+=1;
+                   int max_ind = (int) (1.0 / step ) +1;
+                   if (maxLoop == 0)
+                       maxLoop = max_ind * max_ind;
 
-               nnHumanWeight = 1 - nnAIWeight - ruleBasedWeight;
-               String s = "ruleBasedWeight : " + ruleBasedWeight + " nnAIWeight: "+ nnAIWeight +" nnHumanWeight: "+nnHumanWeight;
-               System.out.println("TESTING FOR "+s);
+                   ruleBasedWeight = step * (numLoop / max_ind);
+                   nnAIWeight = step * (numLoop % (max_ind));
+                   nnHumanWeight = 1 - nnAIWeight - ruleBasedWeight;
+
+                   restart=( nnHumanWeight>1.05 || nnHumanWeight<-0.05 ||nnAIWeight>1.05  || nnAIWeight<-0.05 ||ruleBasedWeight>1.05||
+                           ruleBasedWeight<-0.05);
+               }
+               while(restart );
+               restart=false;
+               s= ruleBasedWeight + ","+ nnAIWeight +","+nnHumanWeight;
+               System.out.println("TESTING FOR ruleBasedWeight,nnAIWeight,nnHumanWeight: "+s + " "+(int)((double)(numLoop*100)/(maxLoop))+ " %");
            }
+            s= ruleBasedWeight + ","+ nnAIWeight +","+nnHumanWeight;
 
+            //restart because track is succeed
+            if(sensors.getLaps()==1)
+            {
+                if(!waitRestart) {
+                    System.out.println("WRITE =============== " + s);
+                     pw2.println(s+','+sensors.getTime());
+                    if(ruleBasedWeight==1) {
+                        pw2.close();
+                        System.exit(0);
+                    }
 
+                    numLoop++;
+                    action.restartRace = true;
+                    waitRestart=true;
+                }
+            }
 
+            //restart because car is out of the track
+            for (int i = 0; i< sensors.getTrackEdgeSensors().length; ++i)
+            {
+                if(sensors.getTrackEdgeSensors()[i]==-1)
+                {
+                    if(!waitRestart) {
+                        if(ruleBasedWeight==1)
+                        {
+                            pw2.close();
+                            System.exit(0);
+                        }
+                        numLoop++;
+                        action.restartRace = true;
+                        waitRestart=true;
+                    }
+
+                    break;
+                }
+            }
+            //restart because we waited too long
+            if( (sensors.getTime())>240)//4 min
+            {
+                if(!waitRestart) {
+                    if(ruleBasedWeight==1)
+                    {
+                        pw2.close();
+                        System.exit(0);
+                    }
+                    numLoop++;
+                    action.restartRace = true;
+                    waitRestart=true;
+                }
+            }
         }
-        Action ruleBaseAction = furthestSensorControl(action, sensors);
-        Action aiNeuralControl = specificNeuralControl(action, sensors, nnAI);
-        Action humanNeuralControl = specificNeuralControl(action, sensors, nnHuman);
 
+
+        Action ruleBaseAction= furthestSensorControl(copy_Action(action), sensors);
+        Action aiNeuralControl = specificNeuralControl(copy_Action(action), sensors, nnAI);
+        Action humanNeuralControl = specificNeuralControl(copy_Action(action), sensors, nnHuman);
 
         action.steering = ruleBasedWeight * ruleBaseAction.steering + nnAIWeight * aiNeuralControl.steering
                 + nnHumanWeight * humanNeuralControl.steering;
@@ -657,5 +711,19 @@ public class DefaultDriver extends AbstractDriver {
             this.setContentPane(new FocusPanel());
             this.addKeyListener(new KeyboardListener());
         }
+    }
+
+    public Action copy_Action (Action ac)
+    {
+        Action acc = new Action();
+        acc.accelerate=new Double(ac.accelerate);
+        acc.brake=new Double(ac.brake);
+        acc.clutch=new Double(ac.clutch);
+        acc.steering=new Double(ac.steering);
+        acc.restartRace=new Boolean(ac.restartRace);
+        acc.gear=new Integer(ac.gear);
+        acc.focus=new Integer(ac.focus);
+
+        return acc;
     }
 }

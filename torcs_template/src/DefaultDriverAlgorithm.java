@@ -43,7 +43,7 @@ public class DefaultDriverAlgorithm{
 
     public static void main(String[] args) {
         //Set path to torcs.properties
-        TorcsConfiguration.getInstance().initialize(new File("torcs.properties"));
+            TorcsConfiguration.getInstance().initialize(new File("torcs.properties"));
         /*
 		 *
 		 * Start without arguments to run the algorithm
@@ -53,26 +53,26 @@ public class DefaultDriverAlgorithm{
 		 * Start with -human to race against the best found
 		 *
 		 */
-        DefaultDriverAlgorithm algorithm = new DefaultDriverAlgorithm();
-        DriversUtils.registerMemory(algorithm.getDriverClass());
-        for (int i = 0; i < 1; i ++) {
-            if (args.length > 0 && args[0].equals("-show")) {
-                new DefaultRace().showBest();
-            } else if (args.length > 0 && args[0].equals("-show-race")) {
-                new DefaultRace().showBestRace();
-            } else if (args.length > 0 && args[0].equals("-human")) {
-                new DefaultRace().raceBest();
-            } else if (args.length > 0 && args[0].equals("-continue")) {
-                if (DriversUtils.hasCheckpoint()) {
-                    DriversUtils.loadCheckpoint().run(true);
+            DefaultDriverAlgorithm algorithm = new DefaultDriverAlgorithm();
+            DriversUtils.registerMemory(algorithm.getDriverClass());
+            for (int i = 0; i < 1; i++) {
+                if (args.length > 0 && args[0].equals("-show")) {
+                    new DefaultRace().showBest();
+                } else if (args.length > 0 && args[0].equals("-show-race")) {
+                    new DefaultRace().showBestRace();
+                } else if (args.length > 0 && args[0].equals("-human")) {
+                    new DefaultRace().raceBest();
+                } else if (args.length > 0 && args[0].equals("-continue")) {
+                    if (DriversUtils.hasCheckpoint()) {
+                        DriversUtils.loadCheckpoint().run(true);
+                    } else {
+                        algorithm.run(false);
+                    }
                 } else {
-                    algorithm.run(false);
+                    for(int j = 0; j< numberRun; ++j)
+                        algorithm.run(false);
                 }
-            } else {
-                for(i=0;i<numberRun;++i)
-                    algorithm.run(false);
             }
-        }
     }
 
 }
