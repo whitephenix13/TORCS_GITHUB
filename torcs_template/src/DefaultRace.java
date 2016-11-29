@@ -2,6 +2,10 @@ import cicontest.algorithm.abstracts.AbstractRace;
 import cicontest.algorithm.abstracts.DriversUtils;
 import cicontest.torcs.controller.Driver;
 import cicontest.torcs.controller.Human;
+import cicontest.torcs.race.Race;
+import cicontest.torcs.race.RaceResult;
+import cicontest.torcs.race.RaceResults;
+import scr.Controller;
 
 public class DefaultRace extends AbstractRace {
 
@@ -22,7 +26,8 @@ public class DefaultRace extends AbstractRace {
 			driversList[i] = new DefaultDriver();
 			driversList[i].loadGenome(drivers[i]);
 		}
-		System.out.println("run race with gui "+ withGUI);
+		System.out.println("run race with gui "+ withGUI +" on "+ track );
+
 		return runRace(driversList, withGUI, true);
 	}
 

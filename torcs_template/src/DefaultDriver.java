@@ -406,7 +406,7 @@ public class DefaultDriver extends AbstractDriver {
         Action ruleBaseAction = furthestSensorControl(action, sensors);
         Action aiNeuralControl = specificNeuralControl(action, sensors, nnAI);
         Action humanNeuralControl = specificNeuralControl(action, sensors, nnHuman);
-        
+
 
         action.steering = ruleBasedWeight * ruleBaseAction.steering + nnAIWeight * aiNeuralControl.steering
                 + nnHumanWeight * humanNeuralControl.steering;
