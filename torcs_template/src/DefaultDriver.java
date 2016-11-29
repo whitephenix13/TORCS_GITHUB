@@ -45,10 +45,10 @@ public class DefaultDriver extends AbstractDriver {
     private int count;
 
     // change this value to choose whether to simulate or control the car
-    private boolean simulate = true;
+    private boolean simulate = false;
 
     // change this value to simulate test on trained neural net
-    private boolean testNeural = false;
+    private boolean testNeural = true;
     private boolean trainNeural = false;
     private boolean saveNeural = false;
     private double[] previous_outputs={0.0D,0.0D,0.0D};
@@ -65,7 +65,9 @@ public class DefaultDriver extends AbstractDriver {
         {
             neuralNetwork = new NeuralNetwork(25, layersConfig, 3);
             //String[] trainingSetNames = {trackName.A_SPEEDWAY,trackName.CORKSCREW,trackName.E_TRACK2};
-            String[] trainingSetNames = {trackName.A_SPEEDWAY};
+            String[] trainingSetNames = {trackName.A_SPEEDWAY, trackName.MICHIGAN, trackName.GC_TRACK2, trackName.FORZA,
+                    trackName.E_ROAD, trackName.STREET1, trackName.CORKSCREW, trackName.E_TRACK6, trackName.E_TRACK2};
+           // String[] trainingSetNames = {trackName.A_SPEEDWAY};
             //String[] trainingSetNames = {"train_data/f-speedway.csv","train_data/aalborg.csv","train_data/alpine-1.csv"};
             //neuralNetwork.Train(trainingSetNames);
             //,"Corkscrew_01_26_01.csv","Michigan_41_65.csv","GC_track2_59_74.csv"
@@ -181,8 +183,18 @@ public class DefaultDriver extends AbstractDriver {
         action.brake = predicted_outputs[1];
         action.steering = predicted_outputs[2];
         System.out.println("predicted= Acc " + predicted_outputs[0] + " Brake " + predicted_outputs[1] + " Steering " + predicted_outputs[2]);
+
+        float a = 0.3f;
+        float b = 0.7f;
         //if(i>25)
             //action.restartRace=true;
+        action .steering = 0.5* b + action.steering * a ;
+        double[] edges= sensors.getTrackEdgeSensors();
+        if(edges[9] < 80 && sensors.getSpeed() > 70){
+            action.accelerate = 0.0D;
+            action.brake = 6/(double)edges[9];
+            System.out.println(action.brake);
+        }
         i++;
         return action;
     }

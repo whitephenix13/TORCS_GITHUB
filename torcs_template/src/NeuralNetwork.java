@@ -33,7 +33,7 @@ public class NeuralNetwork implements Serializable {
     int inputs;
     int[] layerConfig;
     int outputs;
-    int numberLoop = 500;
+    int numberLoop =300;
     double tolerance= 0.0001;
 
     NeuralNetwork(int _inputs, int[] _layerConfig, int _outputs) {
