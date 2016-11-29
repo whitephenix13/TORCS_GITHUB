@@ -52,14 +52,19 @@ public class DefaultDriver extends AbstractDriver {
     private boolean furthestSensor = false;
     // change this value to simulate test on trained neural net
     private boolean testNeural = false;
-    private boolean trainNeural = true;
-    private boolean saveNeural = true;
+    private boolean trainNeural = false;
+    private boolean saveNeural = false;
 
     private double[] previous_outputs={0.0D,0.0D,0.0D};
     private boolean complexNeural = true;
-    private double ruleBasedWeight = 0.7;
-    private double nnAIWeight = 0.2;
-    private double nnHumanWeight = 0.1;
+    private boolean crossvalidateWeight =false;
+    private static int numLoop = 0;
+    private boolean first_cross = true;
+    private double step = 0.1;
+    //The weights are overide when crossvalidateWeight is true
+    private double ruleBasedWeight = 1.0;
+    private double nnAIWeight = 0.0;
+    private double nnHumanWeight = 0.0;
 
     // for GP
 //    private boolean GPtest = true;
@@ -84,7 +89,7 @@ public class DefaultDriver extends AbstractDriver {
         if(trainNeural)
         {
             nnAI = new NeuralNetwork(25, layersConfig, 3);
-
+            nnHuman = new NeuralNetwork(25, layersConfig, 3);
             String[] trainingHuman = {trackName.STREET1, trackName.CORKSCREW, trackName.E_TRACK6, trackName.E_TRACK2};            //String[] trainingSetNames = {"train_data/f-speedway.csv","train_data/aalborg.csv","train_data/alpine-1.csv"};
 
             //neuralNetwork.Train(trainingSetNames);
@@ -240,7 +245,7 @@ public class DefaultDriver extends AbstractDriver {
         action.accelerate = predicted_outputs[0];
         action.brake = predicted_outputs[1];
         action.steering = predicted_outputs[2];
-        System.out.println("predicted= Acc " + predicted_outputs[0] + " Brake " + predicted_outputs[1] + " Steering " + predicted_outputs[2]);
+        //System.out.println("predicted= Acc " + predicted_outputs[0] + " Brake " + predicted_outputs[1] + " Steering " + predicted_outputs[2]);
 
 
         return action;
@@ -361,9 +366,47 @@ public class DefaultDriver extends AbstractDriver {
     }
 
     public Action complexControl(Action action, SensorModel sensors) {
+        if(crossvalidateWeight)
+        {
+
+            if(sensors.getLaps()==1)
+            {
+                System.out.println("ruleBasedWeight : " + ruleBasedWeight + " nnAIWeight: "+ nnAIWeight +" nnHumanWeight: "+nnHumanWeight );
+            }
+
+           for (int i = 0; i< sensors.getTrackEdgeSensors().length; ++i)
+           {
+               if(sensors.getTrackEdgeSensors()[i]==-1)
+               {
+                   numLoop++;
+                   action.restartRace=true;
+
+                   break;
+               }
+           }
+           if(first_cross) {
+               first_cross=false;
+               int max_ind = (int) (1.0 / step + 1);
+               ruleBasedWeight = step * (numLoop % max_ind);
+               if (ruleBasedWeight == 1)
+                   nnAIWeight = 0;
+               else
+                   nnAIWeight = step * (numLoop / max_ind);
+               if (nnAIWeight == 1)
+                   ruleBasedWeight = 0;
+
+               nnHumanWeight = 1 - nnAIWeight - ruleBasedWeight;
+               String s = "ruleBasedWeight : " + ruleBasedWeight + " nnAIWeight: "+ nnAIWeight +" nnHumanWeight: "+nnHumanWeight;
+               System.out.println("TESTING FOR "+s);
+           }
+
+
+
+        }
         Action ruleBaseAction = furthestSensorControl(action, sensors);
         Action aiNeuralControl = specificNeuralControl(action, sensors, nnAI);
         Action humanNeuralControl = specificNeuralControl(action, sensors, nnHuman);
+        
 
         action.steering = ruleBasedWeight * ruleBaseAction.steering + nnAIWeight * aiNeuralControl.steering
                 + nnHumanWeight * humanNeuralControl.steering;
