@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import cicontest.algorithm.abstracts.AbstractAlgorithm;
 import cicontest.algorithm.abstracts.AbstractRace;
 import cicontest.algorithm.abstracts.DriversUtils;
+import cicontest.torcs.client.TorcsUtilities;
 import cicontest.torcs.controller.Driver;
 import cicontest.torcs.controller.Human;
 import race.TorcsConfiguration;
@@ -11,10 +12,9 @@ import race.TorcsConfiguration;
 public class DefaultDriverAlgorithm{
 
     private static final long serialVersionUID = 654963126362653L;
-
     DefaultDriverGenome[] drivers = new DefaultDriverGenome[1];
     int[] results = new int[1];
-    static int numberRun=10;
+    static int numberRun=10000;
     public Class<? extends Driver> getDriverClass() {
         return DefaultDriver.class;
     }
@@ -27,7 +27,7 @@ public class DefaultDriverAlgorithm{
 
             //Start a race
             DefaultRace race = new DefaultRace();
-            race.setTrack("a-speedway", "road");
+            race.setTrack("a-speedway", "oval");
             race.laps = 2;
 
             //for speedup set withGUI to false
@@ -69,7 +69,8 @@ public class DefaultDriverAlgorithm{
                     algorithm.run(false);
                 }
             } else {
-                algorithm.run(false);
+                for(i=0;i<numberRun;++i)
+                    algorithm.run(false);
             }
         }
     }

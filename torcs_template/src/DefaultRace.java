@@ -22,6 +22,7 @@ public class DefaultRace extends AbstractRace {
 			driversList[i] = new DefaultDriver();
 			driversList[i].loadGenome(drivers[i]);
 		}
+		System.out.println("run race with gui "+ withGUI);
 		return runRace(driversList, withGUI, true);
 	}
 
