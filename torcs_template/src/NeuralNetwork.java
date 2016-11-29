@@ -33,7 +33,9 @@ public class NeuralNetwork implements Serializable {
     int inputs;
     int[] layerConfig;
     int outputs;
-    int numberLoop =300;
+
+    int numberLoop = 2000;
+
     double tolerance= 0.0001;
 
     NeuralNetwork(int _inputs, int[] _layerConfig, int _outputs) {
@@ -42,10 +44,10 @@ public class NeuralNetwork implements Serializable {
         outputs=_outputs;
     }
 
-    NeuralNetwork(boolean loadFromMemory) {
+    NeuralNetwork(boolean loadFromMemory, String filename) {
         if(loadFromMemory)
         {
-            NeuralNetwork net = loadGenome();
+            NeuralNetwork net = loadGenome(filename);
             lines=net.lines;
             result=net.result;
             line=net.line;
@@ -229,11 +231,11 @@ public class NeuralNetwork implements Serializable {
     }
 
     //Store the state of this neural network
-    public void storeGenome() {
+    public void storeGenome(String filename) {
         ObjectOutputStream out = null;
         try {
             //create the memory folder manually
-            out = new ObjectOutputStream(new FileOutputStream("memory/mydriver.mem"));
+            out = new ObjectOutputStream(new FileOutputStream("memory/" + filename + ".mem"));
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -247,12 +249,12 @@ public class NeuralNetwork implements Serializable {
     }
 
     // Load a neural network from memory
-    public NeuralNetwork loadGenome() {
+    public NeuralNetwork loadGenome(String filename) {
 
         // Read from disk using FileInputStream
         FileInputStream f_in = null;
         try {
-            f_in = new FileInputStream("memory/mydriver.mem");
+            f_in = new FileInputStream("memory/" + filename + ".mem");
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         }
