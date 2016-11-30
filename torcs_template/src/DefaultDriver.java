@@ -91,53 +91,53 @@ public class DefaultDriver extends AbstractDriver {
     public DefaultDriver() {
         initialize();
 
-//        if(trainNeural)
-//        {
-//            nnAI = new NeuralNetwork(25, layersConfig, 3);
-//            nnHuman = new NeuralNetwork(25, layersConfig, 3);
-//            String[] trainingHuman = {trackName.STREET1, trackName.CORKSCREW, trackName.E_TRACK6, trackName.E_TRACK2};            //String[] trainingSetNames = {"train_data/f-speedway.csv","train_data/aalborg.csv","train_data/alpine-1.csv"};
-//
-//            //neuralNetwork.Train(trainingSetNames);
-//            //,"Corkscrew_01_26_01.csv","Michigan_41_65.csv","GC_track2_59_74.csv"
-//            String[] trainingAI = {trackName.F_SPEEDWAY, trackName.AALBORG, trackName.ALPINE1};
-//            //String[] trainingSetNames2 = {trackName.A_SPEEDWAY, trackName.MICHIGAN, trackName.GC_TRACK2, trackName.FORZA,
-//            //trackName.E_ROAD, trackName.STREET1, trackName.CORKSCREW, trackName.E_TRACK6, trackName.E_TRACK2};
-//            nnAI.Train(trainingAI);
-//            nnHuman.Train(trainingHuman);
-//            if(saveNeural) {
-//                nnAI.storeGenome("nnAI");
-//                nnHuman.storeGenome("nnHuman");
-//            }
-//        }
-//        else
-//        {
-//            nnAI = new NeuralNetwork(true, "nnAI");
-//            nnHuman = new NeuralNetwork(true, "nnHuman");
-//        }
-//        if(!simulate && !testNeural && !furthestSensor && !complexNeural) {
-//            focusFrame = new FocusFrame();
-//            focusFrame.requestFocus();
-//        }
-//
-//        try {
-//            if(!simulate && !testNeural && !furthestSensor && !complexNeural) {
-//                pw = new PrintWriter(new File("test"+".csv"));
-//                pw.println("ACCELERATION,BRAKE,STEERING,SPEED,TRACK_POSITION,ANGLE_TO_TRACK_AXIS,TRACK_EDGE_0,TRACK_EDGE_1,TRACK_EDGE_2," +
-//                        "TRACK_EDGE_3,TRACK_EDGE_4,TRACK_EDGE_5,TRACK_EDGE_6,TRACK_EDGE_7,TRACK_EDGE_8,TRACK_EDGE_9,TRACK_EDGE_10," +
-//                        "TRACK_EDGE_11,TRACK_EDGE_12,TRACK_EDGE_13,TRACK_EDGE_14,TRACK_EDGE_15,TRACK_EDGE_16,TRACK_EDGE_17,TRACK_EDGE_18");
-//            } else if(simulate && !testNeural && !furthestSensor && !complexNeural) {
-//                reader = new BufferedReader(new FileReader(trackName.A_SPEEDWAY+".csv"));
-//                lines = new ArrayList<String>();
-//                String line = null;
-//                while ((line = reader.readLine()) != null) {
-//                    lines.add(line);
-//                }
-//            }
-//        } catch (FileNotFoundException e) {
-//            e.printStackTrace();
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
+        if(trainNeural)
+        {
+            nnAI = new NeuralNetwork(25, layersConfig, 3);
+            nnHuman = new NeuralNetwork(25, layersConfig, 3);
+            String[] trainingHuman = {trackName.STREET1, trackName.CORKSCREW, trackName.E_TRACK6, trackName.E_TRACK2};            //String[] trainingSetNames = {"train_data/f-speedway.csv","train_data/aalborg.csv","train_data/alpine-1.csv"};
+
+            //neuralNetwork.Train(trainingSetNames);
+            //,"Corkscrew_01_26_01.csv","Michigan_41_65.csv","GC_track2_59_74.csv"
+            String[] trainingAI = {trackName.F_SPEEDWAY, trackName.AALBORG, trackName.ALPINE1};
+            //String[] trainingSetNames2 = {trackName.A_SPEEDWAY, trackName.MICHIGAN, trackName.GC_TRACK2, trackName.FORZA,
+            //trackName.E_ROAD, trackName.STREET1, trackName.CORKSCREW, trackName.E_TRACK6, trackName.E_TRACK2};
+            nnAI.Train(trainingAI);
+            nnHuman.Train(trainingHuman);
+            if(saveNeural) {
+                nnAI.storeGenome("nnAI");
+                nnHuman.storeGenome("nnHuman");
+            }
+        }
+        else
+        {
+            nnAI = new NeuralNetwork(true, "nnAI");
+            nnHuman = new NeuralNetwork(true, "nnHuman");
+        }
+        if(!simulate && !testNeural && !furthestSensor && !complexNeural) {
+            focusFrame = new FocusFrame();
+            focusFrame.requestFocus();
+        }
+
+        try {
+            if(!simulate && !testNeural && !furthestSensor && !complexNeural) {
+                pw = new PrintWriter(new File("test"+".csv"));
+                pw.println("ACCELERATION,BRAKE,STEERING,SPEED,TRACK_POSITION,ANGLE_TO_TRACK_AXIS,TRACK_EDGE_0,TRACK_EDGE_1,TRACK_EDGE_2," +
+                        "TRACK_EDGE_3,TRACK_EDGE_4,TRACK_EDGE_5,TRACK_EDGE_6,TRACK_EDGE_7,TRACK_EDGE_8,TRACK_EDGE_9,TRACK_EDGE_10," +
+                        "TRACK_EDGE_11,TRACK_EDGE_12,TRACK_EDGE_13,TRACK_EDGE_14,TRACK_EDGE_15,TRACK_EDGE_16,TRACK_EDGE_17,TRACK_EDGE_18");
+            } else if(simulate && !testNeural && !furthestSensor && !complexNeural) {
+                reader = new BufferedReader(new FileReader(trackName.A_SPEEDWAY+".csv"));
+                lines = new ArrayList<String>();
+                String line = null;
+                while ((line = reader.readLine()) != null) {
+                    lines.add(line);
+                }
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private void initialize() {
@@ -360,7 +360,7 @@ public class DefaultDriver extends AbstractDriver {
 
             if(edges[9] < 0.5*sensors.getSpeed() && sensors.getSpeed() > 40){
                 action.accelerate = 0.0D;
-                action.brake = (15.0D)/((double)edges[9]);
+                action.brake = (5.0D)/((double)edges[9]);
 //                System.out.println(action.brake);
             }
 
