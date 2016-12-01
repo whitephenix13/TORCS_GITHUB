@@ -17,7 +17,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static sun.management.snmp.AdaptorBootstrap.initialize;
 
 public class DefaultDriver extends AbstractDriver {
 
@@ -54,7 +53,7 @@ public class DefaultDriver extends AbstractDriver {
     private boolean simulate = false;
 
     // change this value to rule based
-    private boolean furthestSensor = false;
+    private boolean furthestSensor = true;
     // change this value to simulate test on trained neural net
     private boolean testNeural = false;
     private boolean trainNeural = false;
@@ -62,17 +61,19 @@ public class DefaultDriver extends AbstractDriver {
 
     private double[] previous_outputs={0.0D,0.0D,0.0D};
 
-    private boolean complexNeural = true;
-    private boolean crossvalidateWeight =true;
+    private boolean complexNeural = false;
+    private boolean crossvalidateWeight =false;
     private static int numLoop = 0;
-    private boolean first_cross = true;
+    private boolean first_cross = false;
     private boolean waitRestart =false;
     private double step = 0.1;
     private static int maxLoop = 0;
     //The weights are overide when crossvalidateWeight is true
+
     private double ruleBasedWeight = 0.7;
     private double nnAIWeight = 0.2;
     private double nnHumanWeight = 0.1;
+
 
     // for GP
 //    private boolean GPtest = true;
@@ -322,6 +323,24 @@ public class DefaultDriver extends AbstractDriver {
         return action;
     }
 
+    private double evadeOpponents(SensorModel sensors, double[] edges, double distance, double newDirection, int edgesIndex){
+        double[] opponents = sensors.getOpponentSensors();
+
+        double steering = 0;
+        if(opponents[9] < distance || opponents[8] < distance || opponents[10] < distance){
+            double direction;
+            if(edges[6] < edges[12])
+                direction = edgesIndex + newDirection;
+            else{
+                direction = edgesIndex - newDirection;
+            }
+            steering = ((90.0 - (direction * 10.0)/180) * 3.14);
+            System.out.println("opponent");
+        }
+        return steering;
+    }
+
+
     // used to simulate the data
     public Action furthestSensorControl(Action action, SensorModel sensors) {
 
@@ -333,7 +352,7 @@ public class DefaultDriver extends AbstractDriver {
             int edgesIndex = 0;
             double[] edges = sensors.getTrackEdgeSensors();
             for(int i =0;i<edges.length; i++){
-                if(edges[i] > furthest){
+                if(edges[i] > furthest && sensors.getAngleToTrackAxis() < Math.abs(Math.PI/2.0)){
                     furthest = edges[i];
                     edgesIndex = i;
                 }
@@ -343,26 +362,20 @@ public class DefaultDriver extends AbstractDriver {
 //            System.out.println(action.steering);
 //            action.steering = DriversUtils.alignToTrackAxis(sensors, 0.5);
 
-//            double[] opponents = sensors.getOpponentSensors();
-//            if(opponents[9] < 10){
-//                action.steering =
+            // evade opponents
+
+//            action.steering = evadeOpponents(sensors, edges, action, distance, newDirection, edgesIndex);
+
+//            double direction;
+//            if(opponents[0] < 8) {
+//                direction = 3;
+//                action.steering = ((90.0 - (direction * 10.0)/180) * 3.14);
 //                System.out.println("opponent");
 //            }
-
-
-//            if (sensors.getSpeed() > 60.0D) {
-//                action.accelerate = 0.0D;
-//                action.brake = 0.0D;
-//            }
-//
-//            if (sensors.getSpeed() > 70.0D) {
-//                action.accelerate = 0.0D;
-//                action.brake = -1.0D;
-//            }
-//
-//            if (sensors.getSpeed() <= 50.0D) {
-//                action.accelerate = (80.0D - sensors.getSpeed()) / 80.0D;
-//                action.brake = 0.0D;
+//            if(opponents[18] < 8) {
+//                direction = 10;
+//                action.steering = ((90.0 - (direction * 10.0)/180) * 3.14);
+//                System.out.println("opponent");
 //            }
 
 
@@ -372,21 +385,10 @@ public class DefaultDriver extends AbstractDriver {
             }
 
             if(edges[9] < 0.5*sensors.getSpeed() && sensors.getSpeed() > 40){
-                action.accelerate = 0.0D;
+                action.accelerate = 0.5D;
                 action.brake = (15.0D)/((double)edges[9]);
 //                System.out.println(action.brake);
             }
-            // restore wall hit
-            if(edges[9] < 5){
-                if(edgesIndex > 9){
-                    edgesIndex += 3;
-                }
-                else{
-                    edgesIndex -= 3;
-                }
-                action.steering = ((90.0 - (double)(edgesIndex) * 10.0)/180) * 3.14;
-            }
-
         }
         return action;
     }
