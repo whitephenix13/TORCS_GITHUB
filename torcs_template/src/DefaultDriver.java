@@ -9,6 +9,7 @@ import scr.Action;
 import scr.SensorModel;
 
 import javax.swing.*;
+import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.io.*;
@@ -69,9 +70,9 @@ public class DefaultDriver extends AbstractDriver {
     private double step = 0.1;
     private static int maxLoop = 0;
     //The weights are overide when crossvalidateWeight is true
-    private double ruleBasedWeight = 0.0;
-    private double nnAIWeight = 0.0;
-    private double nnHumanWeight = 1.0;
+    private double ruleBasedWeight = 0.7;
+    private double nnAIWeight = 0.2;
+    private double nnHumanWeight = 0.1;
 
     // for GP
 //    private boolean GPtest = true;
@@ -98,24 +99,24 @@ public class DefaultDriver extends AbstractDriver {
         {
             nnAI = new NeuralNetwork(25, layersConfig, 3);
             nnHuman = new NeuralNetwork(25, layersConfig, 3);
-            String[] trainingHuman = {trackName.STREET1, trackName.CORKSCREW, trackName.E_TRACK6, trackName.E_TRACK2};            //String[] trainingSetNames = {"train_data/f-speedway.csv","train_data/aalborg.csv","train_data/alpine-1.csv"};
-
+            String[] trainingHuman = {trackName.A_SPEEDWAY,trackName.STREET1, trackName.CORKSCREW, trackName.E_TRACK6, trackName.E_TRACK2};
+            //String[] trainingSetNames = {"train_data/f-speedway.csv","train_data/aalborg.csv","train_data/alpine-1.csv"};
             //neuralNetwork.Train(trainingSetNames);
             //,"Corkscrew_01_26_01.csv","Michigan_41_65.csv","GC_track2_59_74.csv"
             String[] trainingAI = {trackName.F_SPEEDWAY, trackName.AALBORG, trackName.ALPINE1};
             //String[] trainingSetNames2 = {trackName.A_SPEEDWAY, trackName.MICHIGAN, trackName.GC_TRACK2, trackName.FORZA,
             //trackName.E_ROAD, trackName.STREET1, trackName.CORKSCREW, trackName.E_TRACK6, trackName.E_TRACK2};
-            nnAI.Train(trainingAI);
+            //nnAI.Train(trainingAI);
             nnHuman.Train(trainingHuman);
             if(saveNeural) {
-                nnAI.storeGenome("nnAI");
-                nnHuman.storeGenome("nnHuman");
+                //nnAI.storeGenome("nnAI");
+                nnHuman.storeGenome("nnHuman2");
             }
         }
         else
         {
             nnAI = new NeuralNetwork(true, "nnAI");
-            nnHuman = new NeuralNetwork(true, "nnHuman");
+            nnHuman = new NeuralNetwork(true, "nnHuman2");
         }
         if(!simulate && !testNeural && !furthestSensor && !complexNeural) {
             focusFrame = new FocusFrame();
@@ -243,7 +244,7 @@ public class DefaultDriver extends AbstractDriver {
         if (action == null) {
             action = new Action();
         }
-        Action neural = specificNeuralControl(action, sensors, nnAI);
+        Action neural = specificNeuralControl(action, sensors, nnHuman);
         return neural;
     }
 
@@ -327,7 +328,6 @@ public class DefaultDriver extends AbstractDriver {
         if (action == null) {
             action = new Action();
         }
-
         if(true){
             double furthest = 0;
             int edgesIndex = 0;
@@ -339,6 +339,7 @@ public class DefaultDriver extends AbstractDriver {
                 }
             }
             action.steering = ((90.0 - (double)edgesIndex * 10.0)/180) * 3.14;
+
 //            System.out.println(action.steering);
 //            action.steering = DriversUtils.alignToTrackAxis(sensors, 0.5);
 
@@ -364,6 +365,7 @@ public class DefaultDriver extends AbstractDriver {
 //                action.brake = 0.0D;
 //            }
 
+
             if (sensors.getSpeed() < 400.0D) {
                 action.accelerate = 1.0D;
                 action.brake = 0.0D;
@@ -374,7 +376,6 @@ public class DefaultDriver extends AbstractDriver {
                 action.brake = (15.0D)/((double)edges[9]);
 //                System.out.println(action.brake);
             }
-
             // restore wall hit
             if(edges[9] < 5){
                 if(edgesIndex > 9){
@@ -385,12 +386,13 @@ public class DefaultDriver extends AbstractDriver {
                 }
                 action.steering = ((90.0 - (double)(edgesIndex) * 10.0)/180) * 3.14;
             }
-        }
 
+        }
         return action;
     }
 
     public Action complexControl(Action action, SensorModel sensors) {
+        double time = System.currentTimeMillis();
         String s="";
         if(crossvalidateWeight)
         {
@@ -437,11 +439,12 @@ public class DefaultDriver extends AbstractDriver {
             }
 
             //restart because car is out of the track
-            for (int i = 0; i< sensors.getTrackEdgeSensors().length; ++i)
+            for (int i = 0; i< (sensors.getTrackEdgeSensors().length/2); ++i)
             {
-                if(sensors.getTrackEdgeSensors()[i]==-1)
+                if(sensors.getTrackEdgeSensors()[2*i]==-1)
                 {
                     if(!waitRestart) {
+                        pw2.println(s);
                         if(ruleBasedWeight==1)
                         {
                             pw2.close();
@@ -459,6 +462,7 @@ public class DefaultDriver extends AbstractDriver {
             if( (sensors.getTime())>240)//4 min
             {
                 if(!waitRestart) {
+                    pw2.println(s);
                     if(ruleBasedWeight==1)
                     {
                         pw2.close();
@@ -470,7 +474,6 @@ public class DefaultDriver extends AbstractDriver {
                 }
             }
         }
-
 
         Action ruleBaseAction= furthestSensorControl(copy_Action(action), sensors);
         Action aiNeuralControl = specificNeuralControl(copy_Action(action), sensors, nnAI);
