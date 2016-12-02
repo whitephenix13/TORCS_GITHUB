@@ -9,13 +9,12 @@ import scr.Action;
 import scr.SensorModel;
 
 import javax.swing.*;
-import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.io.*;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
 
 
 public class DefaultDriver extends AbstractDriver {
@@ -44,6 +43,7 @@ public class DefaultDriver extends AbstractDriver {
 
     private PrintWriter pw;
     private static PrintWriter pw2;
+    private static PrintWriter pw3;
     private BufferedReader reader;
 
     List<String> lines = null;
@@ -53,7 +53,7 @@ public class DefaultDriver extends AbstractDriver {
     private boolean simulate = false;
 
     // change this value to rule based
-    private boolean furthestSensor = true;
+    private boolean furthestSensor = false;
     // change this value to simulate test on trained neural net
     private boolean testNeural = false;
     private boolean trainNeural = false;
@@ -61,10 +61,10 @@ public class DefaultDriver extends AbstractDriver {
 
     private double[] previous_outputs={0.0D,0.0D,0.0D};
 
-    private boolean complexNeural = false;
-    private boolean crossvalidateWeight =false;
+    private boolean complexNeural = true;
+    private boolean crossvalidateWeight =true;
     private static int numLoop = 0;
-    private boolean first_cross = false;
+    private boolean first_cross = true;
     private boolean waitRestart =false;
     private double step = 0.1;
     private static int maxLoop = 0;
@@ -76,13 +76,19 @@ public class DefaultDriver extends AbstractDriver {
 
 
     // for GP
-//    private boolean GPtest = true;
+    private boolean useGP=false;//only if complexNeural =true and crossvalidateWeight=false
+    private static GP2 genP;
+    private double[] GPMinBounds= {0.0,0.0};//distance , direction
+    private double[] GPMaxBounds= {30.0,18.0};//distance , direction
+    //private double[] GPMinBounds= {0.0,0.0,0.0,0.0};//[distance, spaceOvertake ,outsideOvertake,keepDistance]
+    //private double[] GPMaxBounds= {30.0,30.0,1.0,1.0};//[distance, spaceOvertake ,outsideOvertake,keepDistance]
+
+    private boolean newGeneration =true;
+    private static double[] lapTimes;
+
 //    private int speciesCounter = 0;
 //    GP gp = new GP();
 //    private ArrayList<ArrayList<String>> population = gp.evolve();
-//    private int current_iter = 0;
-//    private int iterations = 5;
-//    private double[] lapTimes = new double[99];
 
 
 
@@ -95,18 +101,25 @@ public class DefaultDriver extends AbstractDriver {
 
     public DefaultDriver() {
         initialize();
+    }
 
+    private void initialize() {
+        this.enableExtras(new AutomatedClutch());
+        this.enableExtras(new AutomatedGearbox());
+        this.enableExtras(new AutomatedRecovering());
+        this.enableExtras(new ABS());
+
+        if(useGP) {
+            if(numLoop==0){
+                genP = new GP2(GPMinBounds,GPMaxBounds);
+                lapTimes= new double[genP.populationSize];}
+        }
         if(trainNeural)
         {
             nnAI = new NeuralNetwork(25, layersConfig, 3);
             nnHuman = new NeuralNetwork(25, layersConfig, 3);
             String[] trainingHuman = {trackName.A_SPEEDWAY,trackName.STREET1, trackName.CORKSCREW, trackName.E_TRACK6, trackName.E_TRACK2};
-            //String[] trainingSetNames = {"train_data/f-speedway.csv","train_data/aalborg.csv","train_data/alpine-1.csv"};
-            //neuralNetwork.Train(trainingSetNames);
-            //,"Corkscrew_01_26_01.csv","Michigan_41_65.csv","GC_track2_59_74.csv"
             String[] trainingAI = {trackName.F_SPEEDWAY, trackName.AALBORG, trackName.ALPINE1};
-            //String[] trainingSetNames2 = {trackName.A_SPEEDWAY, trackName.MICHIGAN, trackName.GC_TRACK2, trackName.FORZA,
-            //trackName.E_ROAD, trackName.STREET1, trackName.CORKSCREW, trackName.E_TRACK6, trackName.E_TRACK2};
             //nnAI.Train(trainingAI);
             nnHuman.Train(trainingHuman);
             if(saveNeural) {
@@ -123,7 +136,6 @@ public class DefaultDriver extends AbstractDriver {
             focusFrame = new FocusFrame();
             focusFrame.requestFocus();
         }
-
         try {
             if(!simulate && !testNeural && !furthestSensor && !complexNeural) {
                 pw = new PrintWriter(new File("test"+".csv"));
@@ -138,7 +150,7 @@ public class DefaultDriver extends AbstractDriver {
                     lines.add(line);
                 }
             }
-            if (crossvalidateWeight)
+            if (crossvalidateWeight && !useGP)
             {
                 if(pw2==null) {
                     pw2 = new PrintWriter(new File("weights" + ".csv"));
@@ -146,18 +158,18 @@ public class DefaultDriver extends AbstractDriver {
 
                 }
             }
+            else if(useGP && ! crossvalidateWeight)
+            {
+                if(pw3==null) {
+                    pw3 = new PrintWriter(new File("GP_results" + ".csv"));
+                    pw3.println("DISTANCE,DIRECTION,TIME");
+                }
+            }
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    private void initialize() {
-        this.enableExtras(new AutomatedClutch());
-        this.enableExtras(new AutomatedGearbox());
-        this.enableExtras(new AutomatedRecovering());
-        this.enableExtras(new ABS());
     }
 
     @Override
@@ -201,7 +213,7 @@ public class DefaultDriver extends AbstractDriver {
             return neuralControl(action, sensors);
         }
         else if(furthestSensor) {
-            return furthestSensorControl(action, sensors);
+            return furthestSensorControl(action, sensors,null);
         } else if(!simulate) {
             return keyboardControl(action, sensors);
         }
@@ -217,7 +229,7 @@ public class DefaultDriver extends AbstractDriver {
         else if(testNeural) {
             return neuralControl(action, sensors);
         } else if(furthestSensor) {
-            return furthestSensorControl(action, sensors);
+            return furthestSensorControl(action, sensors,null);
         }else if(!simulate) {
             return keyboardControl(action, sensors);
         }
@@ -233,7 +245,7 @@ public class DefaultDriver extends AbstractDriver {
         else if(testNeural) {
             return neuralControl(action, sensors);
         } else if(furthestSensor) {
-            return furthestSensorControl(action, sensors);
+            return furthestSensorControl(action, sensors,null);
         } else if(!simulate) {
             return keyboardControl(action, sensors);
         }
@@ -291,26 +303,26 @@ public class DefaultDriver extends AbstractDriver {
         }
 
         //if(lines.size() <= count){
-            action.steering = DriversUtils.alignToTrackAxis(sensors, 0.5);
-            if (sensors.getSpeed() > 60.0D) {
-                action.accelerate = 1.0D;
-                action.brake = 0.0D;
-            }
+        action.steering = DriversUtils.alignToTrackAxis(sensors, 0.5);
+        if (sensors.getSpeed() > 60.0D) {
+            action.accelerate = 1.0D;
+            action.brake = 0.0D;
+        }
 
-            if (sensors.getSpeed() > 160.0D) {
-                action.accelerate = 0.0D;
-                action.brake = -1.0D;
-            }
+        if (sensors.getSpeed() > 160.0D) {
+            action.accelerate = 0.0D;
+            action.brake = -1.0D;
+        }
 
-            if (sensors.getSpeed() <= 60.0D) {
-                action.accelerate = (80.0D - sensors.getSpeed()) / 80.0D;
-                action.brake = 0.0D;
-            }
+        if (sensors.getSpeed() <= 60.0D) {
+            action.accelerate = (80.0D - sensors.getSpeed()) / 80.0D;
+            action.brake = 0.0D;
+        }
 
-            if (sensors.getSpeed() < 30.0D) {
-                action.accelerate = 1.0D;
-                action.brake = 0.0D;
-            }
+        if (sensors.getSpeed() < 30.0D) {
+            action.accelerate = 1.0D;
+            action.brake = 0.0D;
+        }
         /*} else {
             String act = lines.get(count);
             String[] acts = act.split(",");
@@ -323,10 +335,10 @@ public class DefaultDriver extends AbstractDriver {
         return action;
     }
 
-    private double evadeOpponents(SensorModel sensors, double[] edges, double distance, double newDirection, int edgesIndex){
+    private Action evadeOpponents(Action currentAction,SensorModel sensors, double[] edges, double[] GPParam, int edgesIndex){
         double[] opponents = sensors.getOpponentSensors();
-
-        double steering = 0;
+        double distance =GPParam[0];
+        double newDirection =GPParam[1];
         if(opponents[9] < distance || opponents[8] < distance || opponents[10] < distance){
             double direction;
             if(edges[6] < edges[12])
@@ -334,159 +346,225 @@ public class DefaultDriver extends AbstractDriver {
             else{
                 direction = edgesIndex - newDirection;
             }
-            steering = ((90.0 - (direction * 10.0)/180) * 3.14);
-            System.out.println("opponent");
+            currentAction.steering = ((90.0 - (direction * 10.0)/180) * 3.14);
         }
-        return steering;
+        return currentAction;
+    }
+    private Action evadeOpponents2(Action currentAction,SensorModel sensors, double[] edges, double[] GPParam, int edgesIndex)
+    {
+        //GPParam = [distance, spaceOvertake ,outsideOvertake,keepDistance]
+        double distance = GPParam[0];
+        double spaceOvertake= GPParam[1];
+        boolean outsideOvertake = GPParam[2]<0.5;
+        boolean keepDistance = GPParam[3]<0.5;
+        double[] opponents = sensors.getOpponentSensors();
+        double leftSensors = edges[0];
+        double rightSensors = edges[18];
+
+        //TODO
+        double steerRight =((90.0 - ((edgesIndex + 11) * 10.0)/180) * 3.14);
+        double steerLeft=((90.0 - ((edgesIndex + 7) * 10.0)/180) * 3.14);
+
+        if(opponents[9] < distance || opponents[8] < distance || opponents[10] < distance) {
+            if(sensors.getAngleToTrackAxis()>0)
+            {
+                if(leftSensors>spaceOvertake)
+                    currentAction.steering=steerLeft;
+                else if (outsideOvertake && (rightSensors>spaceOvertake))
+                    currentAction.steering=steerRight;
+            }
+            else
+                if(rightSensors>spaceOvertake)
+                    currentAction.steering=steerRight;
+                else if (outsideOvertake && (leftSensors>spaceOvertake))
+                    currentAction.steering=steerLeft;
+            if(keepDistance)
+            {
+                //TODO
+                currentAction.accelerate=0;
+                currentAction.brake=1;
+            }
+        }
+        return currentAction;
     }
 
-
     // used to simulate the data
-    public Action furthestSensorControl(Action action, SensorModel sensors) {
+    public Action furthestSensorControl(Action action, SensorModel sensors, double[] GPSpecies) {
 
         if (action == null) {
             action = new Action();
         }
-        if(true){
-            double furthest = 0;
-            int edgesIndex = 0;
-            double[] edges = sensors.getTrackEdgeSensors();
-            for(int i =0;i<edges.length; i++){
-                if(edges[i] > furthest && sensors.getAngleToTrackAxis() < Math.abs(Math.PI/2.0)){
-                    furthest = edges[i];
-                    edgesIndex = i;
-                }
+
+        double furthest = 0;
+        int edgesIndex = 0;
+        double[] edges = sensors.getTrackEdgeSensors();
+        for(int i =0;i<edges.length; i++){
+            if(edges[i] > furthest && sensors.getAngleToTrackAxis() < Math.abs(Math.PI/2.0)){
+                furthest = edges[i];
+                edgesIndex = i;
             }
-            action.steering = ((90.0 - (double)edgesIndex * 10.0)/180) * 3.14;
+        }
+        action.steering = ((90.0 - (double)edgesIndex * 10.0)/180) * 3.14;
 
 //            System.out.println(action.steering);
 //            action.steering = DriversUtils.alignToTrackAxis(sensors, 0.5);
 
-            // evade opponents
-
-//            action.steering = evadeOpponents(sensors, edges, action, distance, newDirection, edgesIndex);
-
-//            double direction;
-//            if(opponents[0] < 8) {
-//                direction = 3;
-//                action.steering = ((90.0 - (direction * 10.0)/180) * 3.14);
-//                System.out.println("opponent");
-//            }
-//            if(opponents[18] < 8) {
-//                direction = 10;
-//                action.steering = ((90.0 - (direction * 10.0)/180) * 3.14);
-//                System.out.println("opponent");
-//            }
+        // evade opponents
+        if(GPSpecies!= null && useGP) {
+            Action evadeAction= evadeOpponents(copy_Action(action), sensors, edges, GPSpecies, edgesIndex);
+            action.steering=evadeAction.steering;
+            action.accelerate=evadeAction.accelerate;
+            action.brake=evadeAction.brake;
+        }
 
 
-            if (sensors.getSpeed() < 400.0D) {
-                action.accelerate = 1.0D;
-                action.brake = 0.0D;
-            }
+        if (sensors.getSpeed() < 400.0D) {
+            action.accelerate = 1.0D;
+            action.brake = 0.0D;
+        }
 
-            if(edges[9] < 0.5*sensors.getSpeed() && sensors.getSpeed() > 40){
-                action.accelerate = 0.5D;
-                action.brake = (15.0D)/((double)edges[9]);
+        if(edges[9] < 0.5*sensors.getSpeed() && sensors.getSpeed() > 40){
+            action.accelerate = 0.5D;
+            action.brake = (15.0D)/((double)edges[9]);
 //                System.out.println(action.brake);
+        }
+
+        return action;
+    }
+
+    public double[] use_genetic_algorithm(SensorModel sensors, Action action)
+    {
+        int popIndex = numLoop%(genP.populationSize);
+        //if we wait for the restart, we do nothing
+        if(!waitRestart) {
+
+            //New population
+            if (numLoop != 0 && popIndex == 0 && newGeneration) {
+                newGeneration=false;
+                if ((numLoop + genP.populationSize) < (DefaultDriverAlgorithm.numberRun))
+                    genP.nextGeneration(lapTimes);
+                else {
+                    for(int i=0; i<genP.populationSize; ++i)
+                    {
+                        String s="";
+                        double[] res= genP.population.get(i);
+                        s+=res[0];
+                        for(int j=1; j< res.length; ++j)
+                            s+=","+res[j];
+                        s+=","+lapTimes[i];
+                        pw3.println(s);
+                    }
+                    pw3.close();
+                    System.exit(0);
+                }
+            }
+            else if ( !newGeneration && (popIndex != 0) )
+                newGeneration=true;
+
+            //restart because track is succeed//more than 4 min // too much damage
+            if (sensors.getLaps() == 1 || (sensors.getTime() > 240) || sensors.getDamage() > 10000 || sensors.isFinished()) {
+                if (sensors.getLaps() == 1) {
+                    lapTimes[popIndex] = sensors.getLastLapTime();
+                }
+                else
+                    lapTimes[popIndex] = 300000; // 5 min : bad time/did not complete
+                numLoop++;
+                System.out.println("GP : " + (numLoop*100)/DefaultDriverAlgorithm.numberRun +" %");
+
+                action.restartRace = true;
+                waitRestart = true;
+
+            }
+        }
+
+        return genP.population.get(popIndex);
+    }
+    public Action cross_validate(SensorModel sensors, Action action)
+    {
+        String s="";
+        if(first_cross) {
+            first_cross=false;
+            boolean restart=false;
+            //update the weights
+            do {
+                if(restart)
+                    numLoop+=1;
+                int max_ind = (int) (1.0 / step ) +1;
+                if (maxLoop == 0)
+                    maxLoop = max_ind * max_ind;
+
+                ruleBasedWeight = step * (numLoop / max_ind);
+                nnAIWeight = step * (numLoop % (max_ind));
+                nnHumanWeight = 1 - nnAIWeight - ruleBasedWeight;
+
+                restart=( nnHumanWeight>1.05 || nnHumanWeight<-0.05 ||nnAIWeight>1.05  || nnAIWeight<-0.05 ||ruleBasedWeight>1.05||
+                        ruleBasedWeight<-0.05);
+            }
+            while(restart );
+            restart=false;
+            s= ruleBasedWeight + ","+ nnAIWeight +","+nnHumanWeight;
+            System.out.println("TESTING FOR ruleBasedWeight,nnAIWeight,nnHumanWeight: "+s + " "+(int)((double)(numLoop*100)/(maxLoop))+ " %");
+        }
+        s= ruleBasedWeight + ","+ nnAIWeight +","+nnHumanWeight;
+
+        boolean offtrack=false;
+        for (int i = 0; i< (sensors.getTrackEdgeSensors().length); ++i)
+            if(sensors.getTrackEdgeSensors()[i]==-1)
+                offtrack=true;
+        if(sensors.getLaps()==1 || offtrack ||((sensors.getTime())>240) || sensors.getDamage()>10000)
+        {
+            if(!waitRestart) {
+                String stime = "";
+                if(sensors.getLaps()==1)
+                    stime=","+sensors.getTime();
+                pw2.println(s+stime);
+                if(ruleBasedWeight==1) {
+                    pw2.close();
+                    System.exit(0);
+                }
+
+                numLoop++;
+                action.restartRace = true;
+                waitRestart=true;
             }
         }
         return action;
     }
-
     public Action complexControl(Action action, SensorModel sensors) {
         double time = System.currentTimeMillis();
-        String s="";
-        if(crossvalidateWeight)
+        double[] gpParam=null;
+        if(crossvalidateWeight && !useGP)
         {
-           if(first_cross) {
-               first_cross=false;
-               boolean restart=false;
-               //update the weights
-               do {
-                   if(restart)
-                       numLoop+=1;
-                   int max_ind = (int) (1.0 / step ) +1;
-                   if (maxLoop == 0)
-                       maxLoop = max_ind * max_ind;
-
-                   ruleBasedWeight = step * (numLoop / max_ind);
-                   nnAIWeight = step * (numLoop % (max_ind));
-                   nnHumanWeight = 1 - nnAIWeight - ruleBasedWeight;
-
-                   restart=( nnHumanWeight>1.05 || nnHumanWeight<-0.05 ||nnAIWeight>1.05  || nnAIWeight<-0.05 ||ruleBasedWeight>1.05||
-                           ruleBasedWeight<-0.05);
-               }
-               while(restart );
-               restart=false;
-               s= ruleBasedWeight + ","+ nnAIWeight +","+nnHumanWeight;
-               System.out.println("TESTING FOR ruleBasedWeight,nnAIWeight,nnHumanWeight: "+s + " "+(int)((double)(numLoop*100)/(maxLoop))+ " %");
-           }
-            s= ruleBasedWeight + ","+ nnAIWeight +","+nnHumanWeight;
-
-            //restart because track is succeed
-            if(sensors.getLaps()==1)
-            {
-                if(!waitRestart) {
-                    System.out.println("WRITE =============== " + s);
-                     pw2.println(s+','+sensors.getTime());
-                    if(ruleBasedWeight==1) {
-                        pw2.close();
-                        System.exit(0);
-                    }
-
-                    numLoop++;
-                    action.restartRace = true;
-                    waitRestart=true;
-                }
-            }
-
-            //restart because car is out of the track
-            for (int i = 0; i< (sensors.getTrackEdgeSensors().length/2); ++i)
-            {
-                if(sensors.getTrackEdgeSensors()[2*i]==-1)
-                {
-                    if(!waitRestart) {
-                        pw2.println(s);
-                        if(ruleBasedWeight==1)
-                        {
-                            pw2.close();
-                            System.exit(0);
-                        }
-                        numLoop++;
-                        action.restartRace = true;
-                        waitRestart=true;
-                    }
-
-                    break;
-                }
-            }
-            //restart because we waited too long
-            if( (sensors.getTime())>240)//4 min
-            {
-                if(!waitRestart) {
-                    pw2.println(s);
-                    if(ruleBasedWeight==1)
-                    {
-                        pw2.close();
-                        System.exit(0);
-                    }
-                    numLoop++;
-                    action.restartRace = true;
-                    waitRestart=true;
-                }
-            }
+            //set the weights and decide if the race needs to be restarted
+            Action cross_action = cross_validate(sensors,copy_Action(action));
+            action.restartRace=cross_action.restartRace;
         }
-
-        Action ruleBaseAction= furthestSensorControl(copy_Action(action), sensors);
+        if(useGP && ! crossvalidateWeight)
+        {
+            Action gpAction = copy_Action(action);
+            //modifies the gpAction
+            gpParam = use_genetic_algorithm(sensors,gpAction);
+            action.restartRace=gpAction.restartRace;
+        }
+        Action ruleBaseAction= furthestSensorControl(copy_Action(action), sensors,gpParam);
         Action aiNeuralControl = specificNeuralControl(copy_Action(action), sensors, nnAI);
         Action humanNeuralControl = specificNeuralControl(copy_Action(action), sensors, nnHuman);
 
-        action.steering = ruleBasedWeight * ruleBaseAction.steering + nnAIWeight * aiNeuralControl.steering
-                + nnHumanWeight * humanNeuralControl.steering;
-        action.brake = ruleBasedWeight * ruleBaseAction.brake + nnAIWeight * aiNeuralControl.brake
-                + nnHumanWeight * humanNeuralControl.brake;
-        action.accelerate = ruleBasedWeight * ruleBaseAction.accelerate + nnAIWeight * aiNeuralControl.accelerate
-                + nnHumanWeight * humanNeuralControl.accelerate;
+        //overide if problem
+        if(sensors.getAngleToTrackAxis() < Math.abs(Math.PI/2.0)) {
+            action.steering = ruleBasedWeight * ruleBaseAction.steering + nnAIWeight * aiNeuralControl.steering
+                    + nnHumanWeight * humanNeuralControl.steering;
+            action.brake = ruleBasedWeight * ruleBaseAction.brake + nnAIWeight * aiNeuralControl.brake
+                    + nnHumanWeight * humanNeuralControl.brake;
+            action.accelerate = ruleBasedWeight * ruleBaseAction.accelerate + nnAIWeight * aiNeuralControl.accelerate
+                    + nnHumanWeight * humanNeuralControl.accelerate;
+        }
+        else// rule base because the car face the wrong side
+        {
+            action.steering=ruleBaseAction.steering;
+            action.brake=ruleBaseAction.brake;
+            action.accelerate= ruleBaseAction.accelerate;
+        }
         return action;
     }
 
@@ -553,9 +631,9 @@ public class DefaultDriver extends AbstractDriver {
 //        int[] times = new int[population.size()];
 
 //        for(int i=0; i<5; i++){
-            // test the whole population
+    // test the whole population
 //            for(int k=0; k<population.size();k++){
-                // test single species
+    // test single species
 //            }
 //            // print best time
 //            int smallest = times[0];
@@ -573,6 +651,7 @@ public class DefaultDriver extends AbstractDriver {
     // used to get human data
     public Action keyboardControl(Action action, SensorModel sensors) {
 
+        System.out.println("Damage = "+ sensors.getDamage());
         double steerSensitivity=0.01D;
         if (action == null) {
             action = new Action();
