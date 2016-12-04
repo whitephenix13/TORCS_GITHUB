@@ -6,10 +6,10 @@ import java.util.*;
 public class GP2{
 
     public ArrayList<double[]> population = new ArrayList<>();
-    int populationSize = 2;
-    int numCrossover = 0;//6
+    int populationSize = 10;
+    int numCrossover = 3;//6
     double mutationStrength = 0.1;
-    int survivors = 1;//8
+    int survivors = 4;//8
     double[] minBound;
     double[] maxBound;
 

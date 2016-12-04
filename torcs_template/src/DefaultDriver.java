@@ -54,6 +54,16 @@ public class DefaultDriver extends AbstractDriver {
 
     // change this value to rule based
     private boolean furthestSensor = false;
+    //parameters for the sensor model :
+    double minFurthestSpeed = 52;
+    double brakeDistanceFactor=0.45;
+    double brakeFurthestFactor=71;
+    double accelerateFurthestFactor=0.3;
+
+    double evadeDistance = 5;
+    double evadeSpaceOvertake=30;
+    boolean evadeOutside=false;
+    boolean evadeKeepDistance =false;
     // change this value to simulate test on trained neural net
     private boolean testNeural = false;
     private boolean trainNeural = false;
@@ -62,7 +72,7 @@ public class DefaultDriver extends AbstractDriver {
     private double[] previous_outputs={0.0D,0.0D,0.0D};
 
     private boolean complexNeural = true;
-    private boolean crossvalidateWeight =true;
+    private boolean crossvalidateWeight =false;
     private static int numLoop = 0;
     private boolean first_cross = true;
     private boolean waitRestart =false;
@@ -71,17 +81,24 @@ public class DefaultDriver extends AbstractDriver {
     //The weights are overide when crossvalidateWeight is true
 
     private double ruleBasedWeight = 0.7;
-    private double nnAIWeight = 0.2;
-    private double nnHumanWeight = 0.1;
+    private double nnAIWeight = 0.3;
+    private double nnHumanWeight = 0.0;
 
 
     // for GP
     private boolean useGP=false;//only if complexNeural =true and crossvalidateWeight=false
     private static GP2 genP;
-    private double[] GPMinBounds= {0.0,0.0};//distance , direction
-    private double[] GPMaxBounds= {30.0,18.0};//distance , direction
+    boolean useGPevade=false;
+    //EVADE OPPONENT 1
+    //private double[] GPMinBounds= {0.0,0.0};//distance , direction
+    //private double[] GPMaxBounds= {30.0,18.0};//distance , direction
+    //EVADE OPPONENT 2
     //private double[] GPMinBounds= {0.0,0.0,0.0,0.0};//[distance, spaceOvertake ,outsideOvertake,keepDistance]
     //private double[] GPMaxBounds= {30.0,30.0,1.0,1.0};//[distance, spaceOvertake ,outsideOvertake,keepDistance]
+    boolean useGPFurthest=false;
+    //FURTHEST SENSORS
+    private double[] GPMinBounds= {0.0,0.0,0.0,0.0};//[minSpeed,brakeDistanceFactor, brakeFactor ,accelerateFactor]
+    private double[] GPMaxBounds= {100.0,2.0,100.0,1.0};//[minSpeed,brakeDistanceFactor, brakeFactor ,accelerateFactor]
 
     private boolean newGeneration =true;
     private static double[] lapTimes;
@@ -162,7 +179,11 @@ public class DefaultDriver extends AbstractDriver {
             {
                 if(pw3==null) {
                     pw3 = new PrintWriter(new File("GP_results" + ".csv"));
-                    pw3.println("DISTANCE,DIRECTION,TIME");
+                    if(useGPevade)
+                        pw3.println("DISTANCE,SPACE OVERTAKE, OUTSIDE OVERTAKE, KEEP DISTANCE,TIME");
+                        //pw3.println("DISTANCE,DIRECTION,TIME");
+                    else if (useGPFurthest)
+                        pw3.println("MIN SPEED, BRAKE DISATNCE FACTOR, BRAKE FACTOR ,ACCELERATE FACTOR,TIME");
                 }
             }
         } catch (FileNotFoundException e) {
@@ -350,13 +371,10 @@ public class DefaultDriver extends AbstractDriver {
         }
         return currentAction;
     }
-    private Action evadeOpponents2(Action currentAction,SensorModel sensors, double[] edges, double[] GPParam, int edgesIndex)
+    private Action evadeOpponents2(Action currentAction,SensorModel sensors, double[] edges,
+                                   double distance,double spaceOvertake,boolean outsideOvertake,boolean keepDistance, int edgesIndex)
     {
         //GPParam = [distance, spaceOvertake ,outsideOvertake,keepDistance]
-        double distance = GPParam[0];
-        double spaceOvertake= GPParam[1];
-        boolean outsideOvertake = GPParam[2]<0.5;
-        boolean keepDistance = GPParam[3]<0.5;
         double[] opponents = sensors.getOpponentSensors();
         double leftSensors = edges[0];
         double rightSensors = edges[18];
@@ -374,10 +392,10 @@ public class DefaultDriver extends AbstractDriver {
                     currentAction.steering=steerRight;
             }
             else
-                if(rightSensors>spaceOvertake)
-                    currentAction.steering=steerRight;
-                else if (outsideOvertake && (leftSensors>spaceOvertake))
-                    currentAction.steering=steerLeft;
+            if(rightSensors>spaceOvertake)
+                currentAction.steering=steerRight;
+            else if (outsideOvertake && (leftSensors>spaceOvertake))
+                currentAction.steering=steerLeft;
             if(keepDistance)
             {
                 //TODO
@@ -405,13 +423,20 @@ public class DefaultDriver extends AbstractDriver {
             }
         }
         action.steering = ((90.0 - (double)edgesIndex * 10.0)/180) * 3.14;
-
 //            System.out.println(action.steering);
 //            action.steering = DriversUtils.alignToTrackAxis(sensors, 0.5);
 
         // evade opponents
         if(GPSpecies!= null && useGP) {
-            Action evadeAction= evadeOpponents(copy_Action(action), sensors, edges, GPSpecies, edgesIndex);
+            if(useGPevade) {
+                evadeDistance = GPSpecies[0];
+                evadeSpaceOvertake = GPSpecies[1];
+                evadeOutside = (GPSpecies[2]<0.5);
+                evadeKeepDistance = (GPSpecies[3]<0.5);
+            }
+            Action evadeAction= evadeOpponents2(copy_Action(action), sensors, edges,evadeDistance,evadeSpaceOvertake
+                    , evadeOutside,evadeKeepDistance, edgesIndex);
+
             action.steering=evadeAction.steering;
             action.accelerate=evadeAction.accelerate;
             action.brake=evadeAction.brake;
@@ -422,10 +447,17 @@ public class DefaultDriver extends AbstractDriver {
             action.accelerate = 1.0D;
             action.brake = 0.0D;
         }
+        if(useGPFurthest)
+        {
+            minFurthestSpeed=GPSpecies[0];
+            brakeDistanceFactor=GPSpecies[1];
+            brakeFurthestFactor=GPSpecies[2];
+            accelerateFurthestFactor=GPSpecies[3];
 
-        if(edges[9] < 0.5*sensors.getSpeed() && sensors.getSpeed() > 40){
-            action.accelerate = 0.5D;
-            action.brake = (15.0D)/((double)edges[9]);
+        }
+        if(edges[9] < brakeDistanceFactor*sensors.getSpeed() && sensors.getSpeed() > minFurthestSpeed){//>40
+            action.brake = (brakeFurthestFactor)/((double)edges[9]); // 15
+            action.accelerate = accelerateFurthestFactor;
 //                System.out.println(action.brake);
         }
 
@@ -461,8 +493,12 @@ public class DefaultDriver extends AbstractDriver {
             else if ( !newGeneration && (popIndex != 0) )
                 newGeneration=true;
 
+            boolean offtrack=false;
+            for (int i = 0; i< (sensors.getTrackEdgeSensors().length); ++i)
+                if(sensors.getTrackEdgeSensors()[i]==-1)
+                    offtrack=true;
             //restart because track is succeed//more than 4 min // too much damage
-            if (sensors.getLaps() == 1 || (sensors.getTime() > 240) || sensors.getDamage() > 10000 || sensors.isFinished()) {
+            if (sensors.getLaps() == 1 || (sensors.getTime() > 240) || offtrack ||(sensors.getDamage() > 0) || (sensors.isFinished())) {
                 if (sensors.getLaps() == 1) {
                     lapTimes[popIndex] = sensors.getLastLapTime();
                 }
@@ -567,86 +603,6 @@ public class DefaultDriver extends AbstractDriver {
         }
         return action;
     }
-
-//    // used to simulate the data
-//    public Action GPControl(Action action, SensorModel sensors) {
-//
-//        if(sensors.getLaps() > 0){
-//            lapTimes[speciesCounter] = sensors.getBestLapTime();
-//            if(speciesCounter < population.size()-1) {
-//                action.restartRace = true;
-//                speciesCounter++;
-//            }
-//            else if(current_iter < iterations){
-//                population = gp.nextGeneration(population, lapTimes);
-//            }
-//            else{
-////
-//            }
-//        }
-//
-//        count += 1;
-//        if (action == null) {
-//            action = new Action();
-//        }
-//
-//        if(lines.size() <= count){
-//            action.steering = DriversUtils.alignToTrackAxis(sensors, 0.5);
-//            if (sensors.getSpeed() > 60.0D) {
-//                action.accelerate = 0.0D;
-//                action.brake = 0.0D;
-//            }
-//
-//            if (sensors.getSpeed() > 70.0D) {
-//                action.accelerate = 0.0D;
-//                action.brake = -1.0D;
-//            }
-//
-//            if (sensors.getSpeed() <= 60.0D) {
-//                action.accelerate = (80.0D - sensors.getSpeed()) / 80.0D;
-//                action.brake = 0.0D;
-//            }
-//
-//            if (sensors.getSpeed() < 30.0D) {
-//                action.accelerate = 1.0D;
-//                action.brake = 0.0D;
-//            }
-//        } else {
-//            String act = lines.get(count);
-//            String[] acts = act.split(",");
-//
-//            action.steering = Double.parseDouble(acts[2]);
-//            action.brake = Double.parseDouble(acts[1]);
-//            action.accelerate = Double.parseDouble(acts[0]);
-//        }
-//
-//        return action;
-//    }
-//
-//    public void setupGP(){
-
-
-
-
-//        int[] times = new int[population.size()];
-
-//        for(int i=0; i<5; i++){
-    // test the whole population
-//            for(int k=0; k<population.size();k++){
-    // test single species
-//            }
-//            // print best time
-//            int smallest = times[0];
-//            for(int j=1; j< times.length; j++){
-//                if(times[j] < smallest){
-//                    smallest = times[j];
-//                }
-//            }
-//
-//            // send the 20 best species to:
-//            population = gp.nextGeneration(population);
-//        }
-//    }
 
     // used to get human data
     public Action keyboardControl(Action action, SensorModel sensors) {
