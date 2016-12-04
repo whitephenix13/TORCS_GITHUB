@@ -54,16 +54,17 @@ public class DefaultDriver extends AbstractDriver {
 
     // change this value to rule based
     private boolean furthestSensor = false;
+    private boolean recovery =false;
     //parameters for the sensor model :
     double minFurthestSpeed = 52;
     double brakeDistanceFactor=0.45;
     double brakeFurthestFactor=71;
     double accelerateFurthestFactor=0.3;
 
-    double evadeDistance = 5;
-    double evadeSpaceOvertake=30;
+    double evadeDistance = 13;
+    double evadeSpaceOvertake=9.3;
     boolean evadeOutside=false;
-    boolean evadeKeepDistance =false;
+    boolean evadeKeepDistance =true;
     // change this value to simulate test on trained neural net
     private boolean testNeural = false;
     private boolean trainNeural = false;
@@ -93,12 +94,12 @@ public class DefaultDriver extends AbstractDriver {
     //private double[] GPMinBounds= {0.0,0.0};//distance , direction
     //private double[] GPMaxBounds= {30.0,18.0};//distance , direction
     //EVADE OPPONENT 2
-    //private double[] GPMinBounds= {0.0,0.0,0.0,0.0};//[distance, spaceOvertake ,outsideOvertake,keepDistance]
-    //private double[] GPMaxBounds= {30.0,30.0,1.0,1.0};//[distance, spaceOvertake ,outsideOvertake,keepDistance]
+    private double[] GPMinBounds= {0.0,0.0,0.0,0.0};//[distance, spaceOvertake ,outsideOvertake,keepDistance]
+    private double[] GPMaxBounds= {30.0,30.0,1.0,1.0};//[distance, spaceOvertake ,outsideOvertake,keepDistance]
     boolean useGPFurthest=false;
     //FURTHEST SENSORS
-    private double[] GPMinBounds= {0.0,0.0,0.0,0.0};//[minSpeed,brakeDistanceFactor, brakeFactor ,accelerateFactor]
-    private double[] GPMaxBounds= {100.0,2.0,100.0,1.0};//[minSpeed,brakeDistanceFactor, brakeFactor ,accelerateFactor]
+    //private double[] GPMinBounds= {0.0,0.0,0.0,0.0};//[minSpeed,brakeDistanceFactor, brakeFactor ,accelerateFactor]
+    //private double[] GPMaxBounds= {100.0,2.0,100.0,1.0};//[minSpeed,brakeDistanceFactor, brakeFactor ,accelerateFactor]
 
     private boolean newGeneration =true;
     private static double[] lapTimes;
@@ -375,30 +376,42 @@ public class DefaultDriver extends AbstractDriver {
                                    double distance,double spaceOvertake,boolean outsideOvertake,boolean keepDistance, int edgesIndex)
     {
         //GPParam = [distance, spaceOvertake ,outsideOvertake,keepDistance]
+
         double[] opponents = sensors.getOpponentSensors();
-        double leftSensors = edges[0];
-        double rightSensors = edges[18];
 
-        //TODO
+        int directionToTrackAxis = (int)Math.round((sensors.getAngleToTrackAxis()*180.0)/(100.0*Math.PI));
+        int leftSensorsIndex = Math.max(0,0+directionToTrackAxis);
+        int rightSensorsIndex = Math.min(18,18-directionToTrackAxis);
+
+        double leftSensors = edges[leftSensorsIndex];
+        double rightSensors = edges[rightSensorsIndex];
+
+
         double steerRight =((90.0 - ((edgesIndex + 11) * 10.0)/180) * 3.14);
-        double steerLeft=((90.0 - ((edgesIndex + 7) * 10.0)/180) * 3.14);
+        double steerLeft=((90.0 - ((edgesIndex + 9) * 10.0)/180) * 3.14);
 
-        if(opponents[9] < distance || opponents[8] < distance || opponents[10] < distance) {
+        /*
+        * sensor 0 : -180° (behind)
+        * sensor 9: -90° (left)
+        * sensor 18: 0° (front)
+        * sensor 27: 90° (right)
+        * */
+        boolean opponentFront = (opponents[17] < distance) || (opponents[18] < distance) || (opponents[19] < distance);
+        if(opponentFront) {
             if(sensors.getAngleToTrackAxis()>0)
             {
-                if(leftSensors>spaceOvertake)
+                if(leftSensors>spaceOvertake )
                     currentAction.steering=steerLeft;
-                else if (outsideOvertake && (rightSensors>spaceOvertake))
+                else if (outsideOvertake && (rightSensors>spaceOvertake) )
                     currentAction.steering=steerRight;
             }
             else
-            if(rightSensors>spaceOvertake)
+            if(rightSensors>spaceOvertake )
                 currentAction.steering=steerRight;
-            else if (outsideOvertake && (leftSensors>spaceOvertake))
+            else if (outsideOvertake && (leftSensors>spaceOvertake) )
                 currentAction.steering=steerLeft;
             if(keepDistance)
             {
-                //TODO
                 currentAction.accelerate=0;
                 currentAction.brake=1;
             }
@@ -416,14 +429,26 @@ public class DefaultDriver extends AbstractDriver {
         double furthest = 0;
         int edgesIndex = 0;
         double[] edges = sensors.getTrackEdgeSensors();
+
+        if(recovery && (Math.abs(sensors.getAngleToTrackAxis())<Math.PI/8.0))
+            recovery=false;
+
+        boolean isReversed =Math.abs(sensors.getAngleToTrackAxis()) > Math.PI/2.0 || recovery;
+        if(isReversed)
+            recovery=true;
+
         for(int i =0;i<edges.length; i++){
-            if(edges[i] > furthest && sensors.getAngleToTrackAxis() < Math.abs(Math.PI/2.0)){
+            if(edges[i] > furthest && !isReversed ){
                 furthest = edges[i];
                 edgesIndex = i;
             }
         }
+        if( recovery && sensors.getAngleToTrackAxis() < -Math.PI/8.0  )
+            edgesIndex=18;
+
+
+
         action.steering = ((90.0 - (double)edgesIndex * 10.0)/180) * 3.14;
-//            System.out.println(action.steering);
 //            action.steering = DriversUtils.alignToTrackAxis(sensors, 0.5);
 
         // evade opponents
@@ -447,6 +472,7 @@ public class DefaultDriver extends AbstractDriver {
             action.accelerate = 1.0D;
             action.brake = 0.0D;
         }
+
         if(useGPFurthest)
         {
             minFurthestSpeed=GPSpecies[0];
@@ -455,12 +481,11 @@ public class DefaultDriver extends AbstractDriver {
             accelerateFurthestFactor=GPSpecies[3];
 
         }
-        if(edges[9] < brakeDistanceFactor*sensors.getSpeed() && sensors.getSpeed() > minFurthestSpeed){//>40
+        if(edges[9] < brakeDistanceFactor*sensors.getSpeed() && sensors.getSpeed() > minFurthestSpeed && !isReversed){//>40
             action.brake = (brakeFurthestFactor)/((double)edges[9]); // 15
             action.accelerate = accelerateFurthestFactor;
-//                System.out.println(action.brake);
         }
-
+        System.out.println(recovery + " "+ action.accelerate);
         return action;
     }
 
@@ -497,8 +522,11 @@ public class DefaultDriver extends AbstractDriver {
             for (int i = 0; i< (sensors.getTrackEdgeSensors().length); ++i)
                 if(sensors.getTrackEdgeSensors()[i]==-1)
                     offtrack=true;
+
+            //TODO: changed here; offtrack = true and time > 240
+            offtrack=false;
             //restart because track is succeed//more than 4 min // too much damage
-            if (sensors.getLaps() == 1 || (sensors.getTime() > 240) || offtrack ||(sensors.getDamage() > 0) || (sensors.isFinished())) {
+            if (sensors.getLaps() == 1 || (sensors.getTime() > 90) || offtrack ||(sensors.getDamage() > 9500) || (sensors.isFinished())) {
                 if (sensors.getLaps() == 1) {
                     lapTimes[popIndex] = sensors.getLastLapTime();
                 }
@@ -587,7 +615,7 @@ public class DefaultDriver extends AbstractDriver {
         Action humanNeuralControl = specificNeuralControl(copy_Action(action), sensors, nnHuman);
 
         //overide if problem
-        if(sensors.getAngleToTrackAxis() < Math.abs(Math.PI/2.0)) {
+        if(Math.abs(sensors.getAngleToTrackAxis())< Math.PI/2.0) {
             action.steering = ruleBasedWeight * ruleBaseAction.steering + nnAIWeight * aiNeuralControl.steering
                     + nnHumanWeight * humanNeuralControl.steering;
             action.brake = ruleBasedWeight * ruleBaseAction.brake + nnAIWeight * aiNeuralControl.brake
