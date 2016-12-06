@@ -14,7 +14,7 @@ public class DefaultDriverAlgorithm{
     private static final long serialVersionUID = 654963126362653L;
     DefaultDriverGenome[] drivers = new DefaultDriverGenome[1];
     int[] results = new int[1];
-    static int numberRun=120;
+    static int numberRun=150;//250
     public Class<? extends Driver> getDriverClass() {
         return DefaultDriver.class;
     }
@@ -24,7 +24,8 @@ public class DefaultDriverAlgorithm{
             //init NN
             DefaultDriverGenome genome = new DefaultDriverGenome();
             drivers[0] = genome;
-
+            if(drivers.length>1)
+                drivers[1] = new DefaultDriverGenome();
             //Start a race
             DefaultRace race = new DefaultRace();
             race.setTrack("a-speedway", "oval");
@@ -34,7 +35,7 @@ public class DefaultDriverAlgorithm{
             results = race.runRace(drivers, false);
 
             // Save genome/nn
-            //DriversUtils.storeGenome(drivers[0]);
+            //DriversUtils.storeGenome(drivers[0], "Team Sting");
         }
         // create a checkpoint this allows you to continue this run later
         //DriversUtils.createCheckpoint(this);

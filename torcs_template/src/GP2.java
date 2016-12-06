@@ -6,10 +6,10 @@ import java.util.*;
 public class GP2{
 
     public ArrayList<double[]> population = new ArrayList<>();
-    int populationSize = 10;
-    int numCrossover = 3;//6
+    int populationSize = 20;//20
+    int numCrossover = 6;//6
     double mutationStrength = 0.1;
-    int survivors = 4;//8
+    int survivors = 8;//8
     double[] minBound;
     double[] maxBound;
 
@@ -36,7 +36,12 @@ public class GP2{
         public Species(int i, double lapT)
         {index=i;lapTime=lapT;}
         public String toString()
-        {return ("Species " + index +" , laptime = "+ lapTime);}
+        {
+            String s ="";
+            for (int i=0; i< population.get(index).length; ++i)
+                s+=i+": "+ population.get(index)[i];
+            return ("Species " + index +" , laptime = "+ lapTime+ " "+ s);
+        }
     }
     public Comparator<Species> SpeciesComp = new Comparator<Species>() {
         public int compare(Species o1, Species o2) {

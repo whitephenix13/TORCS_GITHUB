@@ -16,6 +16,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+import java.util.UUID;
+
+import java.nio.file.*;
 
 public class DefaultDriver extends AbstractDriver {
 
@@ -61,10 +64,14 @@ public class DefaultDriver extends AbstractDriver {
     double brakeFurthestFactor=71;
     double accelerateFurthestFactor=0.3;
 
-    double evadeDistance = 13;
-    double evadeSpaceOvertake=9.3;
-    boolean evadeOutside=false;
-    boolean evadeKeepDistance =true;
+    double evadeDistance =7.60;//7.6
+    double evadeSpaceOvertake=4;//13.8
+    boolean evadeOutside=true;
+    double evadeBrake =0.416;
+    double evadeAccelerate=0.885;
+    double evadeSteer= 0.228;
+
+
     // change this value to simulate test on trained neural net
     private boolean testNeural = false;
     private boolean trainNeural = false;
@@ -94,8 +101,8 @@ public class DefaultDriver extends AbstractDriver {
     //private double[] GPMinBounds= {0.0,0.0};//distance , direction
     //private double[] GPMaxBounds= {30.0,18.0};//distance , direction
     //EVADE OPPONENT 2
-    private double[] GPMinBounds= {0.0,0.0,0.0,0.0};//[distance, spaceOvertake ,outsideOvertake,keepDistance]
-    private double[] GPMaxBounds= {30.0,30.0,1.0,1.0};//[distance, spaceOvertake ,outsideOvertake,keepDistance]
+    private double[] GPMinBounds= {0.0,0.0,0.0,0.0,0.0,0.0};//[distance, spaceOvertake ,outsideOvertake,evadeBrake,evadeAccelerate, evadeSteer]
+    private double[] GPMaxBounds= {60.0,15.0,1.0,1.0,1.0,1.0};//[distance, spaceOvertake ,outsideOvertake,evadeBrake,evadeAccelerate,evadeSteer]
     boolean useGPFurthest=false;
     //FURTHEST SENSORS
     //private double[] GPMinBounds= {0.0,0.0,0.0,0.0};//[minSpeed,brakeDistanceFactor, brakeFactor ,accelerateFactor]
@@ -104,11 +111,17 @@ public class DefaultDriver extends AbstractDriver {
     private boolean newGeneration =true;
     private static double[] lapTimes;
 
-//    private int speciesCounter = 0;
-//    GP gp = new GP();
-//    private ArrayList<ArrayList<String>> population = gp.evolve();
-
-
+    //SWARM INTELLIGENCE
+    private boolean useSwarm = true; //should always be set to true
+   // private String swarmFolder ="Swarm/";
+    //TODO: set the folder to the correct value
+    private String swarmFolder ="/Users/ci_course/torcs/shared_folder/hV2WAKPWYkuH/";
+    private int actionNumber=0;
+    private PrintWriter pw4;
+    private BufferedReader reader4;
+    String uniqueID;
+    private boolean isBlocking=false;
+    //TODO: clean the file when track ends
 
     // change this value to determine how many hidden layers and the size of it
     private int[] layersConfig = {50, 50, 25, 25};
@@ -121,11 +134,28 @@ public class DefaultDriver extends AbstractDriver {
         initialize();
     }
 
+    private void cleanDirectory()
+    {
+        //clean the folder
+        Path path = Paths.get(swarmFolder+"Swarm_communication.csv");
+        try {
+            Files.delete(path);
+        } catch (NoSuchFileException x) {
+            System.err.format("%s: no such" + " file or directory%n", path);
+        } catch (DirectoryNotEmptyException x) {
+            System.err.format("%s not empty%n", path);
+        } catch (IOException x) {
+            // File permission problems are caught here.
+            System.err.println(x);
+        }
+    }
     private void initialize() {
         this.enableExtras(new AutomatedClutch());
         this.enableExtras(new AutomatedGearbox());
         this.enableExtras(new AutomatedRecovering());
         this.enableExtras(new ABS());
+
+        uniqueID = UUID.randomUUID().toString();
 
         if(useGP) {
             if(numLoop==0){
@@ -181,11 +211,15 @@ public class DefaultDriver extends AbstractDriver {
                 if(pw3==null) {
                     pw3 = new PrintWriter(new File("GP_results" + ".csv"));
                     if(useGPevade)
-                        pw3.println("DISTANCE,SPACE OVERTAKE, OUTSIDE OVERTAKE, KEEP DISTANCE,TIME");
+                        pw3.println("DISTANCE,SPACE OVERTAKE, OUTSIDE OVERTAKE, BRAKE, ACCELERATE,STEER ,TIME");
                         //pw3.println("DISTANCE,DIRECTION,TIME");
                     else if (useGPFurthest)
-                        pw3.println("MIN SPEED, BRAKE DISATNCE FACTOR, BRAKE FACTOR ,ACCELERATE FACTOR,TIME");
+                        pw3.println("MIN SPEED, BRAKE DISTANCE FACTOR, BRAKE FACTOR ,ACCELERATE FACTOR,TIME");
                 }
+            }
+            else if(useSwarm)
+            {
+                pw4 = new PrintWriter(new File(swarmFolder+"Swarm_communication" + ".csv"));
             }
         } catch (FileNotFoundException e) {
             e.printStackTrace();
@@ -218,7 +252,7 @@ public class DefaultDriver extends AbstractDriver {
 
     @Override
     public String getDriverName() {
-        return "Example Controller";
+        return "The Stig";
     }
 
     @Override
@@ -313,7 +347,7 @@ public class DefaultDriver extends AbstractDriver {
         double time_elapsed=(System.currentTimeMillis()- startTime);
         if(sensors.getLaps()==1 || time_elapsed>300000)//5 min = 5 * 60 * 1000 ms = 300 000
         {
-            System.out.println("Track is finished in "+ NeuralNetwork.convertTime(time_elapsed,true));
+            //System.out.println("Track is finished in "+ NeuralNetwork.convertTime(time_elapsed,true));
             raceStarted=false;
             action.restartRace=true;
         }
@@ -373,7 +407,7 @@ public class DefaultDriver extends AbstractDriver {
         return currentAction;
     }
     private Action evadeOpponents2(Action currentAction,SensorModel sensors, double[] edges,
-                                   double distance,double spaceOvertake,boolean outsideOvertake,boolean keepDistance, int edgesIndex)
+                                   double distance,double spaceOvertake,boolean outsideOvertake,double brake,double accelerate, double steer, int edgesIndex)
     {
         //GPParam = [distance, spaceOvertake ,outsideOvertake,keepDistance]
 
@@ -387,34 +421,39 @@ public class DefaultDriver extends AbstractDriver {
         double rightSensors = edges[rightSensorsIndex];
 
 
-        double steerRight =((90.0 - ((edgesIndex + 11) * 10.0)/180) * 3.14);
-        double steerLeft=((90.0 - ((edgesIndex + 9) * 10.0)/180) * 3.14);
-
         /*
         * sensor 0 : -180° (behind)
         * sensor 9: -90° (left)
         * sensor 18: 0° (front)
         * sensor 27: 90° (right)
         * */
-        boolean opponentFront = (opponents[17] < distance) || (opponents[18] < distance) || (opponents[19] < distance);
-        if(opponentFront) {
-            if(sensors.getAngleToTrackAxis()>0)
+        boolean leftOvertake= (opponents[16] < distance)||(opponents[17] < distance) || (sensors.getAngleToTrackAxis()>0 &&
+                opponents[18] < distance );
+        boolean rightOvertake = (opponents[19] < distance)  || (opponents[20] < distance)|| (sensors.getAngleToTrackAxis()<=0 &&
+                opponents[18] < distance );
+
+        if(leftOvertake || rightOvertake) {
+            if(leftOvertake)
             {
-                if(leftSensors>spaceOvertake )
-                    currentAction.steering=steerLeft;
-                else if (outsideOvertake && (rightSensors>spaceOvertake) )
-                    currentAction.steering=steerRight;
+                if(leftSensors>spaceOvertake ) {
+                    currentAction.steering = evadeSteer; //left
+                }
+                else if (outsideOvertake && (rightSensors>spaceOvertake) ) {
+                    currentAction.steering = -1 * evadeSteer; //right
+                }
             }
-            else
-            if(rightSensors>spaceOvertake )
-                currentAction.steering=steerRight;
-            else if (outsideOvertake && (leftSensors>spaceOvertake) )
-                currentAction.steering=steerLeft;
-            if(keepDistance)
-            {
-                currentAction.accelerate=0;
-                currentAction.brake=1;
+            else {
+                if (rightSensors > spaceOvertake) {
+                    currentAction.steering = -1 * evadeSteer; //right
+                }
+                else if (outsideOvertake && (leftSensors > spaceOvertake)) {
+                    currentAction.steering = evadeSteer; //left
+                }
             }
+            currentAction.accelerate = accelerate;
+            currentAction.brake = brake;
+
+
         }
         return currentAction;
     }
@@ -446,26 +485,8 @@ public class DefaultDriver extends AbstractDriver {
         if( recovery && sensors.getAngleToTrackAxis() < -Math.PI/8.0  )
             edgesIndex=18;
 
-
-
         action.steering = ((90.0 - (double)edgesIndex * 10.0)/180) * 3.14;
 //            action.steering = DriversUtils.alignToTrackAxis(sensors, 0.5);
-
-        // evade opponents
-        if(GPSpecies!= null && useGP) {
-            if(useGPevade) {
-                evadeDistance = GPSpecies[0];
-                evadeSpaceOvertake = GPSpecies[1];
-                evadeOutside = (GPSpecies[2]<0.5);
-                evadeKeepDistance = (GPSpecies[3]<0.5);
-            }
-            Action evadeAction= evadeOpponents2(copy_Action(action), sensors, edges,evadeDistance,evadeSpaceOvertake
-                    , evadeOutside,evadeKeepDistance, edgesIndex);
-
-            action.steering=evadeAction.steering;
-            action.accelerate=evadeAction.accelerate;
-            action.brake=evadeAction.brake;
-        }
 
 
         if (sensors.getSpeed() < 400.0D) {
@@ -481,11 +502,38 @@ public class DefaultDriver extends AbstractDriver {
             accelerateFurthestFactor=GPSpecies[3];
 
         }
+        //DEFAULT CONTROLLER
         if(edges[9] < brakeDistanceFactor*sensors.getSpeed() && sensors.getSpeed() > minFurthestSpeed && !isReversed){//>40
             action.brake = (brakeFurthestFactor)/((double)edges[9]); // 15
             action.accelerate = accelerateFurthestFactor;
         }
-        System.out.println(recovery + " "+ action.accelerate);
+
+        //EVADE OPPONENTS
+
+        if(GPSpecies!= null && useGP) {
+            if(useGPevade) {
+                evadeDistance = GPSpecies[0];
+                evadeSpaceOvertake = GPSpecies[1];
+                evadeOutside = (GPSpecies[2]<0.5);
+                evadeBrake = GPSpecies[3];
+                evadeAccelerate = GPSpecies[4];
+                evadeSteer=GPSpecies[5];
+            }}
+        if(!isReversed) {
+            Action evadeAction = evadeOpponents2(copy_Action(action), sensors, edges, evadeDistance, evadeSpaceOvertake
+                    , evadeOutside, evadeBrake,evadeAccelerate,evadeSteer, edgesIndex);
+
+            action.steering = evadeAction.steering;
+            action.accelerate = evadeAction.accelerate;
+            action.brake = evadeAction.brake;
+        }
+
+        //USE SWARM
+        if(useSwarm && !isReversed) {
+            Action swarmAction = SwarmControl(action,sensors, edgesIndex);
+            //Action swarmAction = BlockOpponent(copy_Action(action),sensors,edgesIndex,evadeDistance,evadeSpaceOvertake);
+            action.steering= swarmAction.steering;
+        }
         return action;
     }
 
@@ -523,10 +571,10 @@ public class DefaultDriver extends AbstractDriver {
                 if(sensors.getTrackEdgeSensors()[i]==-1)
                     offtrack=true;
 
-            //TODO: changed here; offtrack = true and time > 240
+            //TODO: changed here; offtrack = true and time > 240, dmaage > 9500
             offtrack=false;
             //restart because track is succeed//more than 4 min // too much damage
-            if (sensors.getLaps() == 1 || (sensors.getTime() > 90) || offtrack ||(sensors.getDamage() > 9500) || (sensors.isFinished())) {
+            if (sensors.getLaps() == 1 || (sensors.getTime() > 90) || offtrack ||(sensors.getDamage() > 5000) || (sensors.isFinished())) {
                 if (sensors.getLaps() == 1) {
                     lapTimes[popIndex] = sensors.getLastLapTime();
                 }
@@ -594,9 +642,140 @@ public class DefaultDriver extends AbstractDriver {
         }
         return action;
     }
+
+    public Action BlockOpponent(Action action, SensorModel sensors,int edgesIndex,double distance,  double enoughSpace)
+    {
+        double[] opponentSensors = sensors.getOpponentSensors();
+        double[] edges = sensors.getTrackEdgeSensors();
+        double steerRight =((90.0 - (edgesIndex +1) * 10.0)/180) * 3.14;
+        double steerLeft=((90.0 - (edgesIndex -1) * 10.0)/180) * 3.14;
+
+        int directionToTrackAxis = (int)Math.round((sensors.getAngleToTrackAxis()*180.0)/(100.0*Math.PI));
+        int leftSensorsIndex = Math.max(0,0+directionToTrackAxis);
+        int rightSensorsIndex = Math.min(18,18-directionToTrackAxis);
+
+        double leftSensors = edges[leftSensorsIndex];
+        double rightSensors = edges[rightSensorsIndex];
+
+        double tunedEnoughSpace = 0.9*enoughSpace;
+        double tunedDistance = distance *1.5 ;
+
+        boolean opponentLeft = (opponentSensors[1]<tunedDistance) ||(opponentSensors[2]<tunedDistance);
+        boolean opponentRight = (opponentSensors[34]<tunedDistance) ||(opponentSensors[35]<tunedDistance);
+
+        if(opponentSensors[0]<tunedDistance)
+            return action;
+        if(opponentLeft)
+        {
+            if(leftSensors>tunedEnoughSpace) {
+                action.steering = steerLeft;
+                return action;
+            }
+        }
+        if(opponentRight)
+        {
+            if(rightSensors>tunedEnoughSpace){
+                action.steering=steerRight;
+                return action;
+            }
+        }
+        return action;
+    }
+    public Action SwarmControl(Action action, SensorModel sensors,int edgesIndex)
+    {
+        int actionState = (actionNumber%3);
+        if(actionState==0)
+        {
+            try {
+                pw4= new PrintWriter(new FileWriter(swarmFolder+"Swarm_communication"+".csv",true));//add to old file
+
+                pw4.println(uniqueID+","+sensors.getRacePosition());
+                pw4.close();
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+
+        }
+        else if (actionState==1 )
+        {
+            List<String> lines4= new ArrayList<>();
+            int allyPosition = -1;
+            int myPreviousPos = -1;
+            try {
+                reader4 = new BufferedReader(new FileReader(swarmFolder+"Swarm_communication.csv"));
+                lines4 = new ArrayList<String>();
+                String line4 = null;
+
+                while ((line4 = reader4.readLine()) != null) {
+                    lines4.add(line4);
+                }
+                reader4.close();
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            if(lines4.size()>1)
+            {
+                String[] l1 = lines4.get(0).split(",");
+                String[] l2 = lines4.get(1).split(",");
+
+                if(! l1[0].equals(uniqueID)) {
+                    allyPosition = Integer.parseInt(l1[1]);
+                    myPreviousPos= Integer.parseInt(l2[1]);
+                }
+                else if(! l2[1].equals(uniqueID)) {
+                    allyPosition = Integer.parseInt(l2[1]);
+                    myPreviousPos = Integer.parseInt(l1[1]);
+                }
+                else
+                    throw new Error("Ally has not written in file");
+
+            }
+            if(allyPosition!=-1 && (myPreviousPos !=-1))
+            {
+                if( (myPreviousPos>allyPosition) || (myPreviousPos==allyPosition && isBlocking) )
+                    isBlocking=true;
+
+                else
+                    isBlocking=false;
+
+
+            }
+
+        }
+        else if(actionState==2)
+        {
+            //reset the file
+            try {
+                //Only one of the two driver delete the file
+                pw4 = new PrintWriter(new FileWriter(swarmFolder + "Swarm_communication.csv"),false);//add to old file
+                pw4.close();
+
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        if(isBlocking)
+            return BlockOpponent(copy_Action(action), sensors, edgesIndex, evadeDistance, evadeSpaceOvertake);
+        else
+            return action;
+    }
     public Action complexControl(Action action, SensorModel sensors) {
+        if(sensors.isFinished() && useSwarm) {
+            cleanDirectory();
+            System.out.println("CLEAN ------------------------------");
+        }
+
         double time = System.currentTimeMillis();
         double[] gpParam=null;
+        boolean carReversed =Math.abs(sensors.getAngleToTrackAxis())>= Math.PI/2.0;
         if(crossvalidateWeight && !useGP)
         {
             //set the weights and decide if the race needs to be restarted
@@ -615,7 +794,7 @@ public class DefaultDriver extends AbstractDriver {
         Action humanNeuralControl = specificNeuralControl(copy_Action(action), sensors, nnHuman);
 
         //overide if problem
-        if(Math.abs(sensors.getAngleToTrackAxis())< Math.PI/2.0) {
+        if(carReversed) {
             action.steering = ruleBasedWeight * ruleBaseAction.steering + nnAIWeight * aiNeuralControl.steering
                     + nnHumanWeight * humanNeuralControl.steering;
             action.brake = ruleBasedWeight * ruleBaseAction.brake + nnAIWeight * aiNeuralControl.brake
@@ -629,6 +808,7 @@ public class DefaultDriver extends AbstractDriver {
             action.brake=ruleBaseAction.brake;
             action.accelerate= ruleBaseAction.accelerate;
         }
+        actionNumber+=1;
         return action;
     }
 
