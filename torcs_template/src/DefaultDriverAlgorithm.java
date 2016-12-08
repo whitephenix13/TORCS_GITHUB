@@ -14,7 +14,7 @@ public class DefaultDriverAlgorithm{
     private static final long serialVersionUID = 654963126362653L;
     DefaultDriverGenome[] drivers = new DefaultDriverGenome[1];
     int[] results = new int[1];
-    static int numberRun=150;//250
+    static int numberRun=1;//250
     public Class<? extends Driver> getDriverClass() {
         return DefaultDriver.class;
     }

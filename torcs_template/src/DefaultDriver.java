@@ -768,10 +768,10 @@ public class DefaultDriver extends AbstractDriver {
             return action;
     }
     public Action complexControl(Action action, SensorModel sensors) {
-        if(sensors.isFinished() && useSwarm) {
+        /*if(sensors.isFinished() && useSwarm) {
             cleanDirectory();
             System.out.println("CLEAN ------------------------------");
-        }
+        }*/
 
         double time = System.currentTimeMillis();
         double[] gpParam=null;

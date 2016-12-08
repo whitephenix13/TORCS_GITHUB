@@ -252,12 +252,12 @@ public class NeuralNetwork implements Serializable {
     public NeuralNetwork loadGenome(String filename) {
 
         // Read from disk using FileInputStream
-        FileInputStream f_in = null;
-        try {
-            f_in = new FileInputStream("memory/" + filename + ".mem");
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        }
+       InputStream f_in = null;
+        /*
+        *         ClassLoader classLoader = getClass().getClassLoader();
+        File file = new File(classLoader.getResource("/memory/" + filename + ".mem").getFile());*/
+        f_in = getClass().getResourceAsStream("memory/" + filename + ".mem");
+
 
         // Read object using ObjectInputStream
         ObjectInputStream obj_in = null;
@@ -280,9 +280,11 @@ public class NeuralNetwork implements Serializable {
 
     private void prepareData(String[] filenames) {
         // data preparation
+        ClassLoader classLoader = getClass().getClassLoader();
         for(int i=0; i<filenames.length; ++i) {
             try {
-                BufferedReader reader = new BufferedReader(new FileReader(filenames[i]+".csv"));
+                File file = new File(classLoader.getResource(filenames[i]+".csv").getFile());
+                BufferedReader reader = new BufferedReader(new FileReader(file));
                 reader.readLine(); // this will read the first line
                 while ((line = reader.readLine()) != null) {
                     lines.add(line);
